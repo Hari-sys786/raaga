@@ -7,3 +7,4 @@ ios/
 .env
 .cache/
 *.log
+package-lock.json

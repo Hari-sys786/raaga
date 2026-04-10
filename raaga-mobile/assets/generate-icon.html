@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Raaga Icon Generator</title>
+  <style>body{background:#222;display:flex;flex-direction:column;align-items:center;gap:20px;padding:40px;font-family:sans-serif;color:#fff}</style>
+</head>
+<body>
+  <h1>Raaga Icon Generator</h1>
+  <canvas id="icon" width="1024" height="1024"></canvas>
+  <button onclick="download()">Download Icon (1024x1024)</button>
+
+  <script>
+    const canvas = document.getElementById('icon');
+    const ctx = canvas.getContext('2d');
+    const size = 1024;
+
+    // Background
+    ctx.fillStyle = '#0A0A0A';
+    ctx.fillRect(0, 0, size, size);
+
+    // Gradient circle
+    const gradient = ctx.createRadialGradient(size/2, size/2, size*0.1, size/2, size/2, size*0.4);
+    gradient.addColorStop(0, '#8B5CF6');
+    gradient.addColorStop(1, '#4C1D95');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(size/2, size/2, size*0.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // "R" letter
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `bold ${size * 0.4}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('R', size/2, size/2);
+
+    // Sound wave arcs
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = size * 0.015;
+    for (let i = 1; i <= 3; i++) {
+      const radius = size * 0.35 + (i * size * 0.05);
+      ctx.beginPath();
+      ctx.arc(size/2, size/2, radius, -Math.PI/4, Math.PI/4);
+      ctx.stroke();
+    }
+
+    function download() {
+      const link = document.createElement('a');
+      link.download = 'raaga-icon.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 32,
+  screenPadding: 20,
+  cardPadding: 16,
+  cardGap: 12,
+  sectionGap: 32,
+  cardRadius: 16,
+  buttonRadiusSmall: 12,
+  buttonRadiusLarge: 24,
+};
