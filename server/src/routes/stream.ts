@@ -5,32 +5,8 @@ import * as piped from '../sources/piped';
 
 const router = Router();
 
-router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+async function proxyStream(streamUrl: string, res: Response): Promise<boolean> {
   try {
-    const { id } = req.params;
-    const source = (req.query.source as string) || 'jiosaavn';
-
-    console.log(`[STREAM] id="${id}" source="${source}"`);
-
-    let streamUrl: string | null = null;
-
-    if (source === 'jiosaavn') {
-      // Strip 'jiosaavn-' prefix if present
-      const sourceId = id.startsWith('jiosaavn-') ? id.slice(9) : id;
-      const song = await jiosaavn.getSongDetails(sourceId);
-      streamUrl = song?.streamUrl || null;
-    } else if (source === 'youtube') {
-      const youtubeId = id.startsWith('youtube-') ? id.slice(8) : id;
-      const result = await piped.getStreamUrl(youtubeId);
-      streamUrl = result?.url || null;
-    }
-
-    if (!streamUrl) {
-      res.status(404).json({ error: 'Stream not found' });
-      return;
-    }
-
-    // Proxy the audio stream to avoid CORS issues
     const audioResponse = await axios.get(streamUrl, {
       responseType: 'stream',
       timeout: 30000,
@@ -39,7 +15,6 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
       },
     });
 
-    // Forward content headers
     const contentType = audioResponse.headers['content-type'];
     const contentLength = audioResponse.headers['content-length'];
 
@@ -49,6 +24,60 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     res.setHeader('Cache-Control', 'public, max-age=3600');
 
     audioResponse.data.pipe(res);
+    return true;
+  } catch (err: any) {
+    if (err?.response?.status === 404 || err?.response?.status === 451) {
+      return false; // URL dead, try next quality
+    }
+    throw err;
+  }
+}
+
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const source = (req.query.source as string) || 'jiosaavn';
+
+    console.log(`[STREAM] id="${id}" source="${source}"`);
+
+    if (source === 'jiosaavn') {
+      const sourceId = id.startsWith('jiosaavn-') ? id.slice(9) : id;
+      const song = await jiosaavn.getSongDetails(sourceId);
+
+      if (!song?.streamUrl) {
+        res.status(404).json({ error: 'Stream not found' });
+        return;
+      }
+
+      // Try the primary stream URL
+      const streamed = await proxyStream(song.streamUrl, res);
+      if (streamed) return;
+
+      // If 404/451, try lower qualities from the URL pattern
+      const baseUrl = song.streamUrl.replace(/_\d+\.mp4$/, '');
+      for (const q of ['160', '96', '48', '12']) {
+        const fallbackUrl = `${baseUrl}_${q}.mp4`;
+        console.log(`[STREAM] Trying fallback quality ${q}kbps`);
+        const ok = await proxyStream(fallbackUrl, res);
+        if (ok) return;
+      }
+
+      res.status(404).json({ error: 'All stream qualities failed' });
+      return;
+    }
+
+    if (source === 'youtube') {
+      const youtubeId = id.startsWith('youtube-') ? id.slice(8) : id;
+      const result = await piped.getStreamUrl(youtubeId);
+      if (!result?.url) {
+        res.status(404).json({ error: 'Stream not found' });
+        return;
+      }
+      await proxyStream(result.url, res);
+      return;
+    }
+
+    res.status(400).json({ error: 'Unknown source' });
   } catch (err) {
     console.error('[STREAM] Error:', (err as Error).message);
     if (!res.headersSent) {

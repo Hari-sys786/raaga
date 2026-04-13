@@ -3,6 +3,7 @@ import { Song } from '../types';
 
 const BASE_URL = 'https://www.jiosaavn.com/api.php';
 const SEARCH_FALLBACK_URL = 'https://jiosaavn-api-privatecvc2.vercel.app';
+const SONG_DETAILS_URL = 'https://jiosavan-api2.vercel.app';
 const UA = 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36';
 const LANG_COOKIE = 'L=hindi,english,telugu,tamil,punjabi,kannada,malayalam,bengali,marathi,gujarati';
 
@@ -152,15 +153,57 @@ async function getCachedTrending(): Promise<Song[]> {
 }
 
 export async function getSongDetails(id: string): Promise<Song | null> {
+  // Use fallback API — it returns decrypted download URLs that actually work
+  // The direct JioSaavn API returns encrypted/preview URLs that 404 on CDN
+  try {
+    const res = await axios.get(`${SONG_DETAILS_URL}/api/songs/${id}`, { timeout: 10000 });
+    const fbData = res.data;
+    if (fbData?.success !== false && fbData?.data) {
+      const songs = Array.isArray(fbData.data) ? fbData.data : [fbData.data];
+      const s = songs[0];
+      if (s) {
+        const dl = s.downloadUrl;
+        const streamUrl = Array.isArray(dl)
+          ? (dl.find((d: any) => d.quality === '320kbps')?.url ||
+             dl.find((d: any) => d.quality === '160kbps')?.url ||
+             dl.find((d: any) => d.quality === '96kbps')?.url ||
+             dl[dl.length - 1]?.url || '')
+          : '';
+        const img = Array.isArray(s.image)
+          ? (s.image.find((i: any) => i.quality === '500x500')?.url || s.image[s.image.length - 1]?.url || '')
+          : (s.image || '');
+
+        return {
+          id: `jiosaavn-${s.id}`,
+          source: 'jiosaavn',
+          sourceId: s.id,
+          title: s.name || s.song || '',
+          artist: s.artists?.primary?.map((a: any) => a.name).join(', ') || s.primaryArtists || 'Unknown',
+          album: s.album?.name || s.album || '',
+          artwork: img,
+          image: img,
+          duration: s.duration || 0,
+          streamUrl,
+          downloadUrl: streamUrl,
+          quality: '320kbps',
+          language: s.language || undefined,
+          year: s.year ? parseInt(s.year, 10) : undefined,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[JIOSAAVN] Fallback getSongDetails failed:', (err as Error).message);
+  }
+
+  // Last resort: try direct API (may return broken preview URLs but better than nothing)
   try {
     const data = await callApi({ __call: 'song.getDetails', pids: id });
-    // Response is { "id": { ...song } } or { songs: [...] }
     const songData = data?.songs?.[0] || data?.[id] || Object.values(data || {})[0];
     if (songData && typeof songData === 'object' && songData.id) {
       return mapDirectSong(songData);
     }
   } catch (err) {
-    console.warn('[JIOSAAVN] getSongDetails failed:', (err as Error).message);
+    console.warn('[JIOSAAVN] Direct getSongDetails failed:', (err as Error).message);
   }
   return null;
 }
