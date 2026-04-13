@@ -80,12 +80,20 @@ export default function HomeScreen() {
   const fetchTrending = useCallback(async () => {
     try {
       setError(null);
-      const data = await api.trending('hindi');
-      const songs = Array.isArray(data) ? data : data?.results || data?.data || [];
+      // Use viral endpoint for mixed trending (multi-language + YouTube)
+      const data = await api.viral();
+      const songs = Array.isArray(data) ? data : data?.data || data?.results || [];
       setTrending(songs);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load trending');
-      console.warn('Trending fetch error:', err);
+      // Fallback to regular trending if viral fails
+      try {
+        const data = await api.trending('hindi');
+        const songs = Array.isArray(data) ? data : data?.results || data?.data || [];
+        setTrending(songs);
+      } catch {
+        setError(err instanceof Error ? err.message : 'Failed to load trending');
+        console.warn('Trending fetch error:', err);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -123,7 +131,7 @@ export default function HomeScreen() {
       {/* Trending Section */}
       <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Trending Now</Text>
+          <Text style={styles.sectionTitle}>Trending Now 🔥</Text>
           <TouchableOpacity>
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
@@ -145,19 +153,9 @@ export default function HomeScreen() {
             <Text style={styles.emptyText}>No trending songs found</Text>
           </GlassCard>
         ) : (
-          <FlatList
-            data={trending.slice(0, 20)}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <SongCard song={item} onPress={() => handleSongPress(item)} />
-            )}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalList}
-            snapToInterval={320}
-            decelerationRate="fast"
-            renderToHardwareTextureAndroid
-          />
+          trending.slice(0, 10).map((song) => (
+            <SongCard key={song.id} song={song} onPress={() => handleSongPress(song)} />
+          ))
         )}
       </Animated.View>
 
