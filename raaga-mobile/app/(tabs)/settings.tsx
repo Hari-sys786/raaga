@@ -14,7 +14,7 @@ import { GlassCard } from '../../components/Common/GlassCard';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { getStorageUsed } from '../../services/downloads';
 import { colors, typography, spacing } from '../../theme';
-import { cacheDirectory, getInfoAsync, deleteAsync } from 'expo-file-system/build/legacy';
+import { cacheDirectory, getInfoAsync, deleteAsync } from 'expo-file-system/legacy';
 
 type AudioQuality = '96' | '160' | '320';
 

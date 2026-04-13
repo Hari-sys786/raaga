@@ -1,12 +1,11 @@
 import {
   documentDirectory,
-  cacheDirectory,
   makeDirectoryAsync,
   getInfoAsync,
   deleteAsync,
   downloadAsync,
   createDownloadResumable,
-} from 'expo-file-system/build/legacy';
+} from 'expo-file-system/legacy';
 import { Song } from '../types';
 import { api } from './api';
 import { useDownloadStore } from '../stores/downloadStore';
