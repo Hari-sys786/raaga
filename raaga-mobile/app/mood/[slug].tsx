@@ -10,6 +10,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '../../components/Common/Screen';
 import { SongCard } from '../../components/Cards/SongCard';
 import { GlassCard } from '../../components/Common/GlassCard';
@@ -34,6 +35,7 @@ const MOOD_CONFIG: Record<string, { label: string; searchTerms: string; gradient
 export default function MoodPage() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,10 +51,21 @@ export default function MoodPage() {
   const fetchSongs = useCallback(async () => {
     try {
       setError(null);
-      const data = await api.genre(moodSlug);
-      const results = Array.isArray(data)
+      // First try genre endpoint, then search with mood keywords
+      let data = await api.genre(moodSlug);
+      let results = Array.isArray(data)
         ? data
         : data?.songs || data?.results || data?.data || [];
+      
+      // If genre returned no/few results, search with mood keywords
+      if (results.length < 5 && config?.searchTerms) {
+        const searchData = await api.search(config.searchTerms);
+        const searchResults = searchData?.results || searchData?.data || searchData?.songs || [];
+        if (Array.isArray(searchResults) && searchResults.length > results.length) {
+          results = searchResults;
+        }
+      }
+      
       setSongs(results);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load songs');
@@ -60,7 +73,7 @@ export default function MoodPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [moodSlug]);
+  }, [moodSlug, config]);
 
   useEffect(() => {
     fetchSongs();
@@ -84,7 +97,7 @@ export default function MoodPage() {
       {/* Header with gradient */}
       <LinearGradient
         colors={[gradient[0] + '30', 'transparent']}
-        style={styles.headerGradient}
+        style={[styles.headerGradient, { paddingTop: insets.top + 12 }]}
       >
         <TouchableOpacity
           style={styles.backButton}
