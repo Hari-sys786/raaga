@@ -1,68 +1,63 @@
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
-import { Song } from '../types';
+// Notification service for Now Playing
+// Safe for Expo Go — gracefully degrades when expo-notifications is unavailable
 
-// Configure notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: false,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-    priority: Notifications.AndroidNotificationPriority.LOW,
-  }),
-});
+let Notifications: typeof import('expo-notifications') | null = null;
 
-const CHANNEL_ID = 'raaga-now-playing';
-let currentNotificationId: string | null = null;
-
-async function ensureChannel() {
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-      name: 'Now Playing',
-      importance: Notifications.AndroidImportance.LOW,
-      sound: undefined,
-      vibrationPattern: [0],
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    });
+// Lazy load — only import if we're in a dev build (not Expo Go)
+async function getNotifications() {
+  if (Notifications !== null) return Notifications;
+  try {
+    Notifications = require('expo-notifications');
+    // Test if it actually works (Expo Go will throw)
+    await Notifications.getPermissionsAsync();
+    return Notifications;
+  } catch {
+    Notifications = null;
+    return null;
   }
 }
 
-export async function showNowPlaying(song: Song) {
+export async function showNowPlaying(title: string, artist: string, artwork?: string) {
   try {
-    await ensureChannel();
+    const notif = await getNotifications();
+    if (!notif) return; // Expo Go — skip silently
 
-    // Dismiss previous
-    if (currentNotificationId) {
-      await Notifications.dismissNotificationAsync(currentNotificationId).catch(() => {});
+    const { status } = await notif.getPermissionsAsync();
+    if (status !== 'granted') {
+      const { status: newStatus } = await notif.requestPermissionsAsync();
+      if (newStatus !== 'granted') return;
     }
 
-    currentNotificationId = await Notifications.scheduleNotificationAsync({
+    await notif.setNotificationChannelAsync('now-playing', {
+      name: 'Now Playing',
+      importance: notif.AndroidImportance.LOW,
+      sound: undefined,
+      vibrationPattern: [0],
+      lockscreenVisibility: notif.AndroidNotificationVisibility.PUBLIC,
+    });
+
+    await notif.scheduleNotificationAsync({
       content: {
-        title: song.title,
-        body: song.artist,
-        data: { songId: song.id },
+        title: `🎵 ${title}`,
+        body: artist,
         sound: false,
         sticky: true,
-        ...(Platform.OS === 'android'
-          ? {
-              categoryIdentifier: CHANNEL_ID,
-            }
-          : {}),
+        priority: notif.AndroidNotificationPriority.LOW,
       },
-      trigger: null, // immediate
+      trigger: null, // Show immediately
+      identifier: 'now-playing',
     });
-  } catch (err) {
-    console.warn('[Notifications] showNowPlaying failed:', err);
+  } catch {
+    // Silent fail — notifications are optional
   }
 }
 
 export async function clearNowPlaying() {
   try {
-    if (currentNotificationId) {
-      await Notifications.dismissNotificationAsync(currentNotificationId);
-      currentNotificationId = null;
-    }
+    const notif = await getNotifications();
+    if (!notif) return;
+    await notif.dismissNotificationAsync('now-playing');
   } catch {
-    // ignore
+    // Silent fail
   }
 }
