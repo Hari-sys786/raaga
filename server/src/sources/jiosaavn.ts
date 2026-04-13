@@ -42,6 +42,7 @@ function getHighResImage(imageUrl: string): string {
 function mapDirectSong(raw: any): Song | null {
   if (!raw || !raw.id) return null;
   const streamUrl = getStreamUrl(raw.media_preview_url || '');
+  const art = getHighResImage(raw.image || '');
   return {
     id: `jiosaavn-${raw.id}`,
     source: 'jiosaavn',
@@ -49,7 +50,8 @@ function mapDirectSong(raw: any): Song | null {
     title: raw.song || raw.title || '',
     artist: raw.primary_artists || raw.singers || 'Unknown',
     album: raw.album || '',
-    artwork: getHighResImage(raw.image || ''),
+    artwork: art,
+    image: art,
     duration: parseInt(raw.duration, 10) || 0,
     streamUrl,
     downloadUrl: streamUrl,
@@ -111,6 +113,7 @@ export async function searchSongs(query: string): Promise<Song[]> {
           artist: s.artists?.primary?.map((a: any) => a.name).join(', ') || s.primaryArtists || 'Unknown',
           album: s.album?.name || '',
           artwork: img,
+          image: img,
           duration: s.duration || 0,
           streamUrl,
           downloadUrl: streamUrl,

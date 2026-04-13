@@ -6,6 +6,7 @@ export interface Song {
   artist: string;
   album: string;
   artwork: string;
+  image: string; // alias for artwork — mobile client uses this field
   duration: number;
   streamUrl?: string;
   downloadUrl?: string;
