@@ -44,13 +44,12 @@ export default function MoodPage() {
   const moodSlug = slug || '';
   const config = MOOD_CONFIG[moodSlug];
   const displayName = config?.label || moodSlug.charAt(0).toUpperCase() + moodSlug.slice(1);
-  const searchTerms = config?.searchTerms || moodSlug;
   const gradient = config?.gradient || ['#8B5CF6', '#6D28D9'];
 
   const fetchSongs = useCallback(async () => {
     try {
       setError(null);
-      const data = await api.search(searchTerms);
+      const data = await api.genre(moodSlug);
       const results = Array.isArray(data)
         ? data
         : data?.songs || data?.results || data?.data || [];
@@ -61,7 +60,7 @@ export default function MoodPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [searchTerms]);
+  }, [moodSlug]);
 
   useEffect(() => {
     fetchSongs();
@@ -132,7 +131,7 @@ export default function MoodPage() {
 const styles = StyleSheet.create({
   headerGradient: {
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: spacing.lg,
+    paddingTop: 50,
     paddingBottom: spacing.xxl,
   },
   backButton: {

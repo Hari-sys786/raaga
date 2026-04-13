@@ -11,6 +11,7 @@ import artistRoutes from './routes/artist';
 import albumRoutes from './routes/album';
 import lyricsRoutes from './routes/lyrics';
 import viralRoutes from './routes/viral';
+import genreRoutes from './routes/genre';
 
 dotenv.config();
 
@@ -72,6 +73,7 @@ app.use('/api/artist', artistRoutes);
 app.use('/api/album', albumRoutes);
 app.use('/api/lyrics', lyricsRoutes);
 app.use('/api/viral', viralRoutes);
+app.use('/api/genre', genreRoutes);
 
 // 404 handler
 app.use((_req, res) => {
