@@ -15,10 +15,13 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     let streamUrl: string | null = null;
 
     if (source === 'jiosaavn') {
-      const song = await jiosaavn.getSongDetails(id);
+      // Strip 'jiosaavn-' prefix if present
+      const sourceId = id.startsWith('jiosaavn-') ? id.slice(9) : id;
+      const song = await jiosaavn.getSongDetails(sourceId);
       streamUrl = song?.streamUrl || null;
     } else if (source === 'youtube') {
-      const result = await piped.getStreamUrl(id);
+      const youtubeId = id.startsWith('youtube-') ? id.slice(8) : id;
+      const result = await piped.getStreamUrl(youtubeId);
       streamUrl = result?.url || null;
     }
 

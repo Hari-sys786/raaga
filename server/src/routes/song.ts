@@ -23,9 +23,11 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     let song: Song | null = null;
 
     if (source === 'jiosaavn') {
-      song = await jiosaavn.getSongDetails(id);
+      const sourceId = id.startsWith('jiosaavn-') ? id.slice(9) : id;
+      song = await jiosaavn.getSongDetails(sourceId);
     } else if (source === 'youtube') {
-      song = await piped.getStreamDetails(id);
+      const youtubeId = id.startsWith('youtube-') ? id.slice(8) : id;
+      song = await piped.getStreamDetails(youtubeId);
     }
 
     if (!song) {

@@ -1,36 +1,17 @@
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MiniPlayer } from '../../components/Player/MiniPlayer';
 import { colors, typography } from '../../theme';
 
-type TabIconConfig = {
-  active: string;
-  inactive: string;
-  family: 'ionicons' | 'material';
+const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
+  index: { active: 'home', inactive: 'home-outline' },
+  search: { active: 'search', inactive: 'search-outline' },
+  library: { active: 'library', inactive: 'library-outline' },
+  downloads: { active: 'download', inactive: 'download-outline' },
+  settings: { active: 'settings', inactive: 'settings-outline' },
 };
-
-const TAB_ICONS: Record<string, TabIconConfig> = {
-  index: { active: 'home', inactive: 'home-outline', family: 'ionicons' },
-  search: { active: 'search', inactive: 'search-outline', family: 'ionicons' },
-  library: { active: 'library', inactive: 'library-outline', family: 'ionicons' },
-  downloads: { active: 'download', inactive: 'download-outline', family: 'ionicons' },
-  settings: { active: 'settings', inactive: 'settings-outline', family: 'ionicons' },
-};
-
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const config = TAB_ICONS[name];
-  if (!config) return null;
-
-  const iconName = focused ? config.active : config.inactive;
-  const color = focused ? colors.defaultAccent : '#666666';
-  const size = 22;
-
-  if (config.family === 'material') {
-    return <MaterialCommunityIcons name={iconName as any} size={size} color={color} />;
-  }
-  return <Ionicons name={iconName as any} size={size} color={color} />;
-}
 
 export default function TabLayout() {
   return (
@@ -38,54 +19,50 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarStyle: styles.tabBar,
-          tabBarActiveTintColor: colors.defaultAccent,
-          tabBarInactiveTintColor: '#666666',
-          tabBarLabelStyle: {
-            ...typography.tabLabel,
-            marginTop: -2,
-          },
+          tabBarStyle: { display: 'none' },
           tabBarHideOnKeyboard: true,
         }}
         tabBar={(props) => (
           <View>
             <MiniPlayer />
-            <View style={styles.tabBar}>
-              {props.state.routes.map((route, index) => {
-                const { options } = props.descriptors[route.key];
-                const label = options.title ?? route.name;
-                const isFocused = props.state.index === index;
-                const color = isFocused ? colors.defaultAccent : '#666666';
+            <View style={styles.tabBarOuter}>
+              <LinearGradient
+                colors={['rgba(5,5,5,0.95)', 'rgba(5,5,5,0.99)']}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.tabBar}>
+                {props.state.routes.map((route, index) => {
+                  const { options } = props.descriptors[route.key];
+                  const label = options.title ?? route.name;
+                  const isFocused = props.state.index === index;
+                  const iconConfig = TAB_ICONS[route.name];
+                  const iconName = isFocused ? iconConfig?.active : iconConfig?.inactive;
+                  const color = isFocused ? colors.defaultAccent : colors.textTertiary;
 
-                return (
-                  <Pressable
-                    key={route.key}
-                    style={styles.tabItem}
-                    onPress={() => {
-                      const event = props.navigation.emit({
-                        type: 'tabPress',
-                        target: route.key,
-                        canPreventDefault: true,
-                      });
-
-                      if (!isFocused && !event.defaultPrevented) {
-                        props.navigation.navigate(route.name);
-                      }
-                    }}
-                  >
-                    <TabIcon name={route.name} focused={isFocused} />
-                    <Text
-                      style={[
-                        typography.tabLabel,
-                        { color, marginTop: 2, fontSize: 10 },
-                      ]}
+                  return (
+                    <Pressable
+                      key={route.key}
+                      style={styles.tabItem}
+                      onPress={() => {
+                        const event = props.navigation.emit({
+                          type: 'tabPress',
+                          target: route.key,
+                          canPreventDefault: true,
+                        });
+                        if (!isFocused && !event.defaultPrevented) {
+                          props.navigation.navigate(route.name);
+                        }
+                      }}
                     >
-                      {label}
-                    </Text>
-                    {isFocused && <View style={styles.activeIndicator} />}
-                  </Pressable>
-                );
-              })}
+                      {isFocused && <View style={styles.activePill} />}
+                      <Ionicons name={iconName as any} size={26} color={color} />
+                      <Text style={[styles.tabLabel, { color }]}>
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
           </View>
         )}
@@ -105,25 +82,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  tabBar: {
-    backgroundColor: colors.background,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+  tabBarOuter: {
+    borderTopColor: 'rgba(255, 255, 255, 0.04)',
     borderTopWidth: 0.5,
-    height: 60,
+    overflow: 'hidden',
+  },
+  tabBar: {
+    height: 64,
     flexDirection: 'row',
     paddingTop: 6,
-    paddingBottom: 8,
+    paddingBottom: 10,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 2,
   },
-  activeIndicator: {
-    width: 4,
-    height: 4,
+  activePill: {
+    position: 'absolute',
+    top: 0,
+    width: 32,
+    height: 3,
     borderRadius: 2,
     backgroundColor: colors.defaultAccent,
-    marginTop: 3,
+  },
+  tabLabel: {
+    ...typography.tabLabel,
+    fontSize: 10,
   },
 });

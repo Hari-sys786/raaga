@@ -7,6 +7,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Screen } from '../../components/Common/Screen';
 import { SongCard } from '../../components/Cards/SongCard';
 import { GlassCard } from '../../components/Common/GlassCard';
@@ -15,17 +18,17 @@ import { api } from '../../services/api';
 import { usePlayerStore } from '../../stores/playerStore';
 import { Song } from '../../types';
 
-const MOOD_CONFIG: Record<string, { label: string; searchTerms: string }> = {
-  chill: { label: 'Chill 😌', searchTerms: 'chill vibes relaxing' },
-  workout: { label: 'Workout 💪', searchTerms: 'workout energy pump' },
-  romance: { label: 'Romance ❤️', searchTerms: 'romantic love songs' },
-  party: { label: 'Party 🎉', searchTerms: 'party dance songs' },
-  focus: { label: 'Focus 🎯', searchTerms: 'focus concentration instrumental' },
-  sad: { label: 'Sad 🥺', searchTerms: 'sad emotional heartbreak' },
-  devotional: { label: 'Devotional 🙏', searchTerms: 'devotional bhajan prayer' },
-  roadtrip: { label: 'Road Trip 🚗', searchTerms: 'road trip travel driving' },
-  rain: { label: 'Rainy Day 🌧️', searchTerms: 'rain monsoon barish' },
-  happy: { label: 'Happy 😄', searchTerms: 'happy upbeat feel good' },
+const MOOD_CONFIG: Record<string, { label: string; searchTerms: string; gradient: [string, string] }> = {
+  chill: { label: 'Chill', searchTerms: 'chill vibes relaxing', gradient: ['#667eea', '#764ba2'] },
+  workout: { label: 'Workout', searchTerms: 'workout energy pump', gradient: ['#f093fb', '#f5576c'] },
+  romance: { label: 'Romance', searchTerms: 'romantic love songs', gradient: ['#a18cd1', '#fbc2eb'] },
+  party: { label: 'Party', searchTerms: 'party dance songs', gradient: ['#ffecd2', '#fcb69f'] },
+  focus: { label: 'Focus', searchTerms: 'focus concentration instrumental', gradient: ['#a1c4fd', '#c2e9fb'] },
+  sad: { label: 'Sad', searchTerms: 'sad emotional heartbreak', gradient: ['#667eea', '#764ba2'] },
+  devotional: { label: 'Devotional', searchTerms: 'devotional bhajan prayer', gradient: ['#f6d365', '#fda085'] },
+  roadtrip: { label: 'Road Trip', searchTerms: 'road trip travel driving', gradient: ['#84fab0', '#8fd3f4'] },
+  rain: { label: 'Rainy Day', searchTerms: 'rain monsoon barish', gradient: ['#a6c0fe', '#f68084'] },
+  happy: { label: 'Happy', searchTerms: 'happy upbeat feel good', gradient: ['#fbc2eb', '#a6c1ee'] },
 };
 
 export default function MoodPage() {
@@ -42,6 +45,7 @@ export default function MoodPage() {
   const config = MOOD_CONFIG[moodSlug];
   const displayName = config?.label || moodSlug.charAt(0).toUpperCase() + moodSlug.slice(1);
   const searchTerms = config?.searchTerms || moodSlug;
+  const gradient = config?.gradient || ['#8B5CF6', '#6D28D9'];
 
   const fetchSongs = useCallback(async () => {
     try {
@@ -78,67 +82,71 @@ export default function MoodPage() {
 
   return (
     <Screen scroll refreshing={refreshing} onRefresh={handleRefresh}>
-      {/* Back Button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => router.back()}
+      {/* Header with gradient */}
+      <LinearGradient
+        colors={[gradient[0] + '30', 'transparent']}
+        style={styles.headerGradient}
       >
-        <Text style={styles.backText}>← Back</Text>
-      </TouchableOpacity>
-
-      {/* Header */}
-      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
         <Text style={styles.title}>{displayName}</Text>
-      </View>
+      </LinearGradient>
 
       {/* Content */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.defaultAccent} />
+          <ActivityIndicator size="large" color={gradient[0]} />
         </View>
       ) : error ? (
         <GlassCard style={styles.errorCard}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity onPress={handleRefresh} style={styles.retryButton}>
+          <TouchableOpacity onPress={handleRefresh} style={[styles.retryButton, { backgroundColor: gradient[0] }]}>
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </GlassCard>
       ) : songs.length === 0 ? (
         <GlassCard style={styles.emptyCard}>
+          <Ionicons name="musical-notes" size={40} color={colors.textTertiary} />
           <Text style={styles.emptyText}>No songs found for {displayName}</Text>
         </GlassCard>
       ) : (
-        songs.map((song) => (
-          <SongCard
-            key={song.id}
-            song={song}
-            onPress={() => handleSongPress(song)}
-          />
+        songs.map((song, index) => (
+          <Animated.View key={song.id} entering={FadeInDown.delay(index * 60).springify()}>
+            <SongCard
+              song={song}
+              onPress={() => handleSongPress(song)}
+            />
+          </Animated.View>
         ))
       )}
 
-      {/* Bottom spacer */}
       <View style={{ height: 100 }} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  backButton: {
+  headerGradient: {
     paddingHorizontal: spacing.screenPadding,
     paddingTop: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.xxl,
   },
-  backText: {
-    ...typography.body,
-    color: colors.defaultAccent,
-  },
-  header: {
-    paddingHorizontal: spacing.screenPadding,
-    paddingVertical: spacing.xl,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
   },
   title: {
     ...typography.h1,
+    fontSize: 32,
     color: colors.textPrimary,
   },
   loadingContainer: {
@@ -160,7 +168,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
     borderRadius: spacing.buttonRadiusLarge,
-    backgroundColor: colors.defaultAccent,
   },
   retryText: {
     ...typography.bodySmall,
@@ -170,6 +177,7 @@ const styles = StyleSheet.create({
   emptyCard: {
     marginHorizontal: spacing.screenPadding,
     alignItems: 'center',
+    gap: spacing.md,
   },
   emptyText: {
     ...typography.body,
