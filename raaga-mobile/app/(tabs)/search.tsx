@@ -20,28 +20,30 @@ import { api } from '../../services/api';
 import { usePlayerStore } from '../../stores/playerStore';
 import { Song } from '../../types';
 
-interface SearchAlbum {
+const POPULAR_SEARCHES = ['Arijit Singh', 'Diljit', 'AP Dhillon', 'Pritam', 'Shreya Ghoshal', 'KK'];
+
+interface ArtistResult {
+  id: string;
+  name: string;
+  image: string;
+  isVerified?: boolean;
+}
+
+interface AlbumResult {
   id: string;
   title: string;
   artist: string;
   image: string;
   year?: string;
+  songCount?: number;
 }
-
-interface SearchArtist {
-  id: string;
-  name: string;
-  image: string;
-}
-
-const POPULAR_SEARCHES = ['Arijit Singh', 'Diljit', 'AP Dhillon', 'Pritam', 'Shreya Ghoshal', 'KK'];
 
 export default function SearchScreen() {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Song[]>([]);
-  const [albums, setAlbums] = useState<SearchAlbum[]>([]);
-  const [artists, setArtists] = useState<SearchArtist[]>([]);
+  const [artists, setArtists] = useState<ArtistResult[]>([]);
+  const [albums, setAlbums] = useState<AlbumResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -56,8 +58,8 @@ export default function SearchScreen() {
   const doSearch = useCallback(async (q: string, p: number = 1) => {
     if (q.trim().length < 2) {
       setResults([]);
-      setAlbums([]);
       setArtists([]);
+      setAlbums([]);
       setSearched(false);
       return;
     }
@@ -65,8 +67,8 @@ export default function SearchScreen() {
     if (p === 1) {
       setLoading(true);
       setResults([]);
-      setAlbums([]);
       setArtists([]);
+      setAlbums([]);
     } else {
       setLoadingMore(true);
     }
@@ -74,30 +76,29 @@ export default function SearchScreen() {
     currentQuery.current = q;
 
     try {
-      const data = await api.search(q, p, 'all');
-      // Don't apply stale results
-      if (currentQuery.current !== q) return;
-
-      const songs: Song[] = data?.results || [];
-      const albumResults: SearchAlbum[] = data?.albums || [];
-      const artistResults: SearchArtist[] = data?.artists || [];
-
       if (p === 1) {
+        // First page: search all types
+        const data = await api.searchAll(q);
+        const songs = data?.results || [];
         setResults(songs);
-        setAlbums(albumResults);
-        setArtists(artistResults);
+        setArtists(data?.artists || []);
+        setAlbums(data?.albums || []);
+        setHasMore(data?.hasMore || false);
+        setPage(1);
       } else {
-        setResults(prev => [...prev, ...songs]);
+        // Subsequent pages: songs only
+        const data = await api.search(q, p);
+        const songs = Array.isArray(data)
+          ? data
+          : data?.results || data?.songs || data?.data || [];
+        if (songs.length > 0) {
+          setResults(prev => [...prev, ...songs]);
+        }
+        setHasMore(data?.hasMore || false);
+        setPage(p);
       }
-      setPage(p);
-      setHasMore(data?.hasMore ?? songs.length >= 20);
     } catch (err) {
       console.warn('Search error:', err);
-      if (p === 1) {
-        setResults([]);
-        setAlbums([]);
-        setArtists([]);
-      }
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -108,10 +109,15 @@ export default function SearchScreen() {
     (text: string) => {
       setQuery(text);
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => doSearch(text, 1), 350);
+      debounceRef.current = setTimeout(() => doSearch(text, 1), 300);
     },
     [doSearch]
   );
+
+  const handleLoadMore = useCallback(() => {
+    if (loadingMore || !hasMore) return;
+    doSearch(currentQuery.current, page + 1);
+  }, [loadingMore, hasMore, page, doSearch]);
 
   useEffect(() => {
     return () => {
@@ -136,99 +142,88 @@ export default function SearchScreen() {
     [doSearch]
   );
 
-  const handleLoadMore = useCallback(() => {
-    if (!hasMore || loadingMore || loading) return;
-    doSearch(query, page + 1);
-  }, [hasMore, loadingMore, loading, query, page, doSearch]);
-
-  // Album card (horizontal)
-  const AlbumResult = ({ album }: { album: SearchAlbum }) => (
-    <TouchableOpacity
-      style={styles.albumCard}
-      onPress={() => router.push(`/album/${album.id}`)}
-      activeOpacity={0.8}
-    >
-      <Image
-        source={{ uri: album.image }}
-        style={styles.albumArt}
-        contentFit="cover"
-        placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
-        transition={200}
-      />
-      <Text style={styles.albumTitle} numberOfLines={1}>{album.title}</Text>
-      <Text style={styles.albumArtist} numberOfLines={1}>{album.artist}</Text>
-    </TouchableOpacity>
-  );
-
-  // Artist card (horizontal)
-  const ArtistResult = ({ artist }: { artist: SearchArtist }) => (
-    <TouchableOpacity
-      style={styles.artistCard}
-      onPress={() => router.push(`/artist/${artist.id}`)}
-      activeOpacity={0.8}
-    >
-      <Image
-        source={{ uri: artist.image }}
-        style={styles.artistAvatar}
-        contentFit="cover"
-        placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
-        transition={200}
-      />
-      <Text style={styles.artistName} numberOfLines={1}>{artist.name}</Text>
-    </TouchableOpacity>
-  );
-
-  const ListHeader = () => (
+  const renderHeader = () => (
     <View>
-      {/* Artists Section */}
+      {/* Artists */}
       {artists.length > 0 && (
-        <Animated.View entering={FadeInDown.duration(300)} style={styles.section}>
-          <Text style={styles.sectionTitle}>Artists</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Artists</Text>
           <FlatList
-            data={artists}
-            keyExtractor={(item) => item.id}
+            data={artists.slice(0, 6)}
+            keyExtractor={(item) => `artist-${item.id}`}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalList}
-            renderItem={({ item }) => <ArtistResult artist={item} />}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.artistCard}
+                onPress={() => router.push(`/artist/${item.id}`)}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={{ uri: item.image }}
+                  style={styles.artistImage}
+                  contentFit="cover"
+                  placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+                />
+                <Text style={styles.artistName} numberOfLines={1}>{item.name}</Text>
+                {item.isVerified && (
+                  <View style={styles.verifiedBadge}>
+                    <Ionicons name="checkmark-circle" size={12} color={colors.defaultAccent} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
           />
-        </Animated.View>
+        </View>
       )}
 
-      {/* Albums Section */}
+      {/* Albums */}
       {albums.length > 0 && (
-        <Animated.View entering={FadeInDown.delay(100).duration(300)} style={styles.section}>
-          <Text style={styles.sectionTitle}>Albums</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Albums</Text>
           <FlatList
-            data={albums}
-            keyExtractor={(item) => item.id}
+            data={albums.slice(0, 6)}
+            keyExtractor={(item) => `album-${item.id}`}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalList}
-            renderItem={({ item }) => <AlbumResult album={item} />}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.albumCard}
+                onPress={() => router.push(`/album/${item.id}`)}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={{ uri: item.image }}
+                  style={styles.albumImage}
+                  contentFit="cover"
+                  placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+                />
+                <Text style={styles.albumTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={styles.albumArtist} numberOfLines={1}>{item.artist}</Text>
+              </TouchableOpacity>
+            )}
           />
-        </Animated.View>
+        </View>
       )}
 
-      {/* Songs label */}
+      {/* Songs header */}
       {results.length > 0 && (
-        <Animated.View entering={FadeInDown.delay(150).duration(300)}>
-          <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Songs</Text>
-        </Animated.View>
+        <Text style={[styles.sectionLabel, { paddingHorizontal: spacing.screenPadding, marginTop: 4 }]}>
+          Songs
+        </Text>
       )}
     </View>
   );
 
-  const ListFooter = () => {
-    if (loadingMore) {
-      return (
-        <View style={styles.footerLoader}>
-          <ActivityIndicator size="small" color={colors.defaultAccent} />
-          <Text style={styles.loadingMoreText}>Loading more…</Text>
-        </View>
-      );
-    }
-    return <View style={{ height: 80 }} />;
+  const renderFooter = () => {
+    if (!loadingMore) return <View style={{ height: 100 }} />;
+    return (
+      <View style={styles.loadingMore}>
+        <ActivityIndicator size="small" color={colors.defaultAccent} />
+      </View>
+    );
   };
 
   return (
@@ -258,10 +253,9 @@ export default function SearchScreen() {
                 onPress={() => {
                   setQuery('');
                   setResults([]);
-                  setAlbums([]);
                   setArtists([]);
+                  setAlbums([]);
                   setSearched(false);
-                  setPage(1);
                 }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
@@ -297,24 +291,24 @@ export default function SearchScreen() {
             <Text style={styles.hintText}>Find your next favorite song</Text>
           </View>
         </View>
-      ) : results.length === 0 && albums.length === 0 && artists.length === 0 ? (
+      ) : results.length === 0 && artists.length === 0 && albums.length === 0 ? (
         <View style={styles.centerContainer}>
           <Ionicons name="musical-notes-outline" size={56} color={colors.surfaceLight} />
-          <Text style={styles.hintText}>No results for "{query}"</Text>
+          <Text style={styles.hintText}>No results for &ldquo;{query}&rdquo;</Text>
         </View>
       ) : (
         <FlatList
           data={results}
           keyExtractor={(item, index) => `${item.id}-${index}`}
+          ListHeaderComponent={renderHeader}
+          ListFooterComponent={renderFooter}
           renderItem={({ item }) => (
             <SongCard song={item} onPress={() => handleSongPress(item)} />
           )}
-          ListHeaderComponent={<ListHeader />}
-          ListFooterComponent={<ListFooter />}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.4}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
         />
       )}
     </Screen>
@@ -397,66 +391,65 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   section: {
-    marginBottom: spacing.lg,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
   },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
+  sectionLabel: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
     paddingHorizontal: spacing.screenPadding,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   horizontalList: {
     paddingHorizontal: spacing.screenPadding,
     gap: 12,
   },
-  // Album cards
-  albumCard: {
-    width: 130,
+  artistCard: {
+    alignItems: 'center',
+    width: 80,
   },
-  albumArt: {
-    width: 130,
-    height: 130,
-    borderRadius: 12,
+  artistImage: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: colors.surface,
-    marginBottom: 8,
+    marginBottom: 6,
+  },
+  artistName: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    top: 50,
+    right: 4,
+  },
+  albumCard: {
+    width: 120,
+  },
+  albumImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+    marginBottom: 6,
   },
   albumTitle: {
-    ...typography.bodySmall,
+    ...typography.caption,
     color: colors.textPrimary,
     fontWeight: '600',
   },
   albumArtist: {
     ...typography.caption,
     color: colors.textTertiary,
-    marginTop: 2,
+    fontSize: 11,
   },
-  // Artist cards
-  artistCard: {
-    width: 90,
-    alignItems: 'center',
-  },
-  artistAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.surface,
-    marginBottom: 8,
-  },
-  artistName: {
-    ...typography.caption,
-    color: colors.textPrimary,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  footerLoader: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+  loadingMore: {
     paddingVertical: 20,
-    gap: 8,
-  },
-  loadingMoreText: {
-    ...typography.caption,
-    color: colors.textTertiary,
+    alignItems: 'center',
   },
 });

@@ -9,8 +9,11 @@ async function fetchJSON<T = any>(url: string): Promise<T> {
 }
 
 export const api = {
-  search: (q: string, page = 1, type = 'all') =>
-    fetchJSON(`${API_BASE}/search?q=${encodeURIComponent(q)}&type=${type}&page=${page}`),
+  search: (q: string, page = 1) =>
+    fetchJSON(`${API_BASE}/search?q=${encodeURIComponent(q)}&type=song&page=${page}`),
+
+  searchAll: (q: string) =>
+    fetchJSON(`${API_BASE}/search?q=${encodeURIComponent(q)}&type=all`),
 
   trending: (lang = 'hindi') =>
     fetchJSON(`${API_BASE}/trending?lang=${lang}`),
