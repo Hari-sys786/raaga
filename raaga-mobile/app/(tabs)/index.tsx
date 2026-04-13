@@ -8,9 +8,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Image } from 'expo-image';
 import { Screen } from '../../components/Common/Screen';
-import { SongCard } from '../../components/Cards/SongCard';
 import { GlassCard } from '../../components/Common/GlassCard';
 import { GenreCard } from '../../components/Cards/GenreCard';
 import { MoodCard } from '../../components/Cards/MoodCard';
@@ -68,6 +69,47 @@ function getGreeting(): string {
   return 'Good Evening';
 }
 
+// Quick play card for trending preview (horizontal)
+function QuickPlayCard({ song, onPress }: { song: Song; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={quickStyles.card} onPress={onPress} activeOpacity={0.8}>
+      <Image
+        source={{ uri: song.image }}
+        style={quickStyles.art}
+        contentFit="cover"
+        placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+        transition={200}
+      />
+      <Text style={quickStyles.title} numberOfLines={1}>{song.title}</Text>
+      <Text style={quickStyles.artist} numberOfLines={1}>{song.artist}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const quickStyles = StyleSheet.create({
+  card: {
+    width: 130,
+    marginRight: 12,
+  },
+  art: {
+    width: 130,
+    height: 130,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    marginBottom: 8,
+  },
+  title: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  artist: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+});
+
 export default function HomeScreen() {
   const router = useRouter();
   const [trending, setTrending] = useState<Song[]>([]);
@@ -80,19 +122,16 @@ export default function HomeScreen() {
   const fetchTrending = useCallback(async () => {
     try {
       setError(null);
-      // Use viral endpoint for mixed trending (multi-language + YouTube)
       const data = await api.viral();
       const songs = Array.isArray(data) ? data : data?.data || data?.results || [];
       setTrending(songs);
     } catch (err: unknown) {
-      // Fallback to regular trending if viral fails
       try {
         const data = await api.trending('hindi');
         const songs = Array.isArray(data) ? data : data?.results || data?.data || [];
         setTrending(songs);
       } catch {
         setError(err instanceof Error ? err.message : 'Failed to load trending');
-        console.warn('Trending fetch error:', err);
       }
     } finally {
       setLoading(false);
@@ -128,11 +167,11 @@ export default function HomeScreen() {
         </View>
       </Animated.View>
 
-      {/* Trending Section */}
+      {/* Trending Preview — horizontal album art cards */}
       <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Trending Now 🔥</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/trending')}>
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
         </View>
@@ -153,9 +192,16 @@ export default function HomeScreen() {
             <Text style={styles.emptyText}>No trending songs found</Text>
           </GlassCard>
         ) : (
-          trending.slice(0, 10).map((song) => (
-            <SongCard key={song.id} song={song} onPress={() => handleSongPress(song)} />
-          ))
+          <FlatList
+            data={trending.slice(0, 10)}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <QuickPlayCard song={item} onPress={() => handleSongPress(item)} />
+            )}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalList}
+          />
         )}
       </Animated.View>
 
@@ -171,10 +217,7 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.browseList}
           renderItem={({ item }) => (
-            <GenreCard
-              genre={item}
-              onPress={() => router.push(`/genre/${item.slug}`)}
-            />
+            <GenreCard genre={item} onPress={() => router.push(`/genre/${item.slug}`)} />
           )}
         />
       </Animated.View>
@@ -191,10 +234,7 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.browseList}
           renderItem={({ item }) => (
-            <MoodCard
-              mood={item}
-              onPress={() => router.push(`/mood/${item.slug}`)}
-            />
+            <MoodCard mood={item} onPress={() => router.push(`/mood/${item.slug}`)} />
           )}
         />
       </Animated.View>
@@ -211,30 +251,10 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.browseList}
           renderItem={({ item }) => (
-            <LanguageChip
-              language={item}
-              onPress={() => router.push(`/genre/${item.slug}`)}
-            />
+            <LanguageChip language={item} onPress={() => router.push(`/genre/${item.slug}`)} />
           )}
         />
       </Animated.View>
-
-      {/* Popular Right Now */}
-      {trending.length > 0 && (
-        <Animated.View entering={FadeInDown.delay(500).duration(500)} style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Popular Right Now</Text>
-          </View>
-          {trending.slice(0, 10).map((song, index) => (
-            <Animated.View key={song.id} entering={FadeInDown.delay(550 + index * 50).springify()}>
-              <SongCard
-                song={song}
-                onPress={() => handleSongPress(song)}
-              />
-            </Animated.View>
-          ))}
-        </Animated.View>
-      )}
 
       <View style={{ height: 100 }} />
     </Screen>

@@ -15,7 +15,7 @@ const GENRE_ICONS: Record<string, { name: string; family: 'ion' | 'mci' }> = {
   edm: { name: 'volume-high', family: 'ion' },
   rock: { name: 'flash', family: 'ion' },
   devotional: { name: 'flower', family: 'ion' },
-  ghazal: { name: 'rose', family: 'mci' },
+  ghazal: { name: 'flower-tulip', family: 'mci' },
   sufi: { name: 'sparkles', family: 'ion' },
   punjabi: { name: 'musical-note', family: 'ion' },
 };

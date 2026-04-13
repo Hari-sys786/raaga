@@ -10,16 +10,18 @@
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
-      "backgroundColor": "#0A0A0A",
+      "backgroundColor": "#050505",
       "resizeMode": "contain"
     },
     "android": {
       "package": "com.pandadev.raaga",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0A0A0A"
+        "backgroundColor": "#050505"
       },
       "edgeToEdgeEnabled": true,
+      "navigationBarColor": "#050505",
+      "backgroundColor": "#050505",
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.WRITE_EXTERNAL_STORAGE",

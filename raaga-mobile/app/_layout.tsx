@@ -8,6 +8,7 @@ export default function RootLayout() {
         headerShown: false,
         contentStyle: { backgroundColor: colors.background },
         animation: 'fade',
+        navigationBarColor: colors.background,
       }}
     >
       <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
@@ -18,13 +19,15 @@ export default function RootLayout() {
           animation: 'slide_from_bottom',
           gestureEnabled: true,
           gestureDirection: 'vertical',
+          contentStyle: { backgroundColor: colors.background },
         }}
       />
-      <Stack.Screen name="artist/[id]" options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="album/[id]" options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="genre/[slug]" options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="mood/[slug]" options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="settings/equalizer" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="artist/[id]" options={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="album/[id]" options={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="genre/[slug]" options={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="mood/[slug]" options={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="trending" options={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="settings/equalizer" options={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }} />
     </Stack>
   );
 }
