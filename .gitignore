@@ -8,3 +8,5 @@ ios/
 .cache/
 *.log
 package-lock.json
+memory-bank/
+.github/
