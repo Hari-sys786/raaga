@@ -34,4 +34,7 @@ export const api = {
 
   viral: () =>
     fetchJSON(`${API_BASE}/viral`),
+
+  genre: (slug: string) =>
+    fetchJSON(`${API_BASE}/genre/${encodeURIComponent(slug)}`),
 };

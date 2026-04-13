@@ -1,172 +1,165 @@
 import axios from 'axios';
 import { Song } from '../types';
 
-const BASE_URL = process.env.JIOSAAVN_API_URL || 'https://jiosavan-api2.vercel.app/api';
+const BASE_URL = 'https://www.jiosaavn.com/api.php';
+const SEARCH_FALLBACK_URL = 'https://jiosaavn-api-privatecvc2.vercel.app';
+const UA = 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36';
+const LANG_COOKIE = 'L=hindi,english,telugu,tamil,punjabi,kannada,malayalam,bengali,marathi,gujarati';
 
-interface SaavnImage {
-  quality: string;
-  url: string;
-}
+const HEADERS = { 'User-Agent': UA };
 
-interface SaavnDownloadUrl {
-  quality: string;
-  url: string;
-}
-
-interface SaavnArtist {
-  id: string;
-  name: string;
-  url: string;
-  image?: SaavnImage[];
-}
-
-interface SaavnSong {
-  id: string;
-  name: string;
-  duration: number;
-  language: string;
-  year: string;
-  album: {
-    id: string;
-    name: string;
-    url: string;
-  };
-  artists: {
-    primary: SaavnArtist[];
-    featured: SaavnArtist[];
-    all: SaavnArtist[];
-  };
-  image: SaavnImage[];
-  downloadUrl: SaavnDownloadUrl[];
-}
-
-interface SaavnSearchResponse {
-  success: boolean;
-  data: {
-    total: number;
-    start: number;
-    results: SaavnSong[];
-  };
-}
-
-interface SaavnSongDetailResponse {
-  success: boolean;
-  data: SaavnSong[];
-}
-
-interface SaavnAlbumResponse {
-  success: boolean;
-  data: {
-    id: string;
-    name: string;
-    year: string;
-    songCount: number;
-    image: SaavnImage[];
-    artists: { primary: SaavnArtist[] };
-    songs: SaavnSong[];
-  };
-}
-
-interface SaavnArtistResponse {
-  success: boolean;
-  data: {
-    id: string;
-    name: string;
-    image: SaavnImage[];
-    followerCount: number;
-    fanCount: string;
-    isVerified: boolean;
-    topSongs: SaavnSong[];
-    topAlbums: Array<{
-      id: string;
-      name: string;
-      year: string;
-      image: SaavnImage[];
-    }>;
-  };
-}
-
-interface SaavnPlaylistResponse {
-  success: boolean;
-  data: {
-    id: string;
-    name: string;
-    songCount: number;
-    followerCount: number;
-    image: SaavnImage[];
-    songs: SaavnSong[];
-  };
-}
-
-// Curated JioSaavn playlist IDs for trending content
+// Curated playlist IDs per language
 const TRENDING_PLAYLISTS: Record<string, string[]> = {
-  hindi: ['110858205', '1134543272'],     // Trending Today, Hindi Top 50
-  english: ['159144718', '93541550'],      // Feel Good Pop, English Top 40
-  telugu: ['1134647498'],                  // Telugu Top 50
-  tamil: ['1134605498'],                   // Tamil Top 50
-  punjabi: ['1134718498'],                 // Punjabi Top 50
+  hindi: ['1134543272', '110858205'],
+  english: ['1134595537', '945969391'],
+  telugu: ['1134643225', '951897805'],
+  tamil: ['1134651042', '1026391929'],
+  punjabi: ['1134543511', '946945296'],
+  kannada: ['1134591169', '948035636'],
+  malayalam: ['1134705865', '951898142'],
+  bengali: ['1134638573', '1064016932'],
+  marathi: ['1134710071', '951898019'],
+  gujarati: ['1134743773'],
 };
 
-function getHighestQualityImage(images: SaavnImage[]): string {
-  if (!images || images.length === 0) return '';
-  // Prefer 500x500 or last (highest)
-  const high = images.find(i => i.quality === '500x500');
-  return high ? high.url : images[images.length - 1].url;
+// In-memory trending cache for search fallback
+let trendingCache: Song[] = [];
+let trendingCacheTime = 0;
+const TRENDING_CACHE_TTL = 30 * 60 * 1000; // 30 min
+
+function getStreamUrl(previewUrl: string): string {
+  if (!previewUrl) return '';
+  return previewUrl
+    .replace('preview.saavncdn.com', 'aac.saavncdn.com')
+    .replace('_96_p.mp4', '_320.mp4');
 }
 
-function getHighestQualityDownload(urls: SaavnDownloadUrl[]): { url: string; quality: string } {
-  if (!urls || urls.length === 0) return { url: '', quality: 'unknown' };
-  // Prefer 320kbps, then highest
-  const high = urls.find(u => u.quality === '320kbps');
-  if (high) return { url: high.url, quality: high.quality };
-  const last = urls[urls.length - 1];
-  return { url: last.url, quality: last.quality };
+function getHighResImage(imageUrl: string): string {
+  if (!imageUrl) return '';
+  return imageUrl.replace('150x150', '500x500').replace('50x50', '500x500');
 }
 
-function mapSaavnSong(song: SaavnSong): Song {
-  const download = getHighestQualityDownload(song.downloadUrl);
-  const primaryArtists = song.artists?.primary?.map(a => a.name).join(', ') || 'Unknown';
-
+function mapDirectSong(raw: any): Song | null {
+  if (!raw || !raw.id) return null;
+  const streamUrl = getStreamUrl(raw.media_preview_url || '');
   return {
-    id: `jiosaavn-${song.id}`,
+    id: `jiosaavn-${raw.id}`,
     source: 'jiosaavn',
-    sourceId: song.id,
-    title: song.name,
-    artist: primaryArtists,
-    album: song.album?.name || '',
-    artwork: getHighestQualityImage(song.image),
-    duration: song.duration || 0,
-    streamUrl: download.url,
-    downloadUrl: download.url,
-    quality: download.quality,
-    language: song.language || undefined,
-    year: song.year ? parseInt(song.year, 10) : undefined,
+    sourceId: raw.id,
+    title: raw.song || raw.title || '',
+    artist: raw.primary_artists || raw.singers || 'Unknown',
+    album: raw.album || '',
+    artwork: getHighResImage(raw.image || ''),
+    duration: parseInt(raw.duration, 10) || 0,
+    streamUrl,
+    downloadUrl: streamUrl,
+    quality: '320kbps',
+    language: raw.language || undefined,
+    year: raw.year ? parseInt(raw.year, 10) : undefined,
   };
+}
+
+async function callApi(params: Record<string, string>, extraHeaders?: Record<string, string>): Promise<any> {
+  const response = await axios.get(BASE_URL, {
+    params: { ...params, _format: 'json', _marker: '0' },
+    headers: { ...HEADERS, ...extraHeaders },
+    timeout: 15000,
+  });
+  // JioSaavn sometimes returns HTML or prefixed JSON — strip any prefix
+  let data = response.data;
+  if (typeof data === 'string') {
+    // Remove potential JSONP/HTML prefix
+    const jsonStart = data.indexOf('{');
+    const jsonArrayStart = data.indexOf('[');
+    const start = jsonStart >= 0 && (jsonArrayStart < 0 || jsonStart < jsonArrayStart) ? jsonStart : jsonArrayStart;
+    if (start > 0) data = data.slice(start);
+    try { data = JSON.parse(data); } catch { /* return as-is */ }
+  }
+  return data;
 }
 
 export async function searchSongs(query: string): Promise<Song[]> {
-  const response = await axios.get<SaavnSearchResponse>(`${BASE_URL}/search/songs`, {
-    params: { query },
-    timeout: 10000,
-  });
-
-  if (!response.data.success || !response.data.data?.results) {
-    return [];
+  // Try direct JioSaavn search first
+  try {
+    const data = await callApi({ __call: 'search.getResults', q: query, n: '30', p: '1' });
+    const results = data?.results || data?.data || [];
+    if (Array.isArray(results) && results.length > 0) {
+      const songs = results.map(mapDirectSong).filter(Boolean) as Song[];
+      if (songs.length > 0) return songs;
+    }
+  } catch (err) {
+    console.warn('[JIOSAAVN] Direct search failed:', (err as Error).message);
   }
 
-  return response.data.data.results.map(mapSaavnSong);
+  // Try fallback API
+  try {
+    const res = await axios.get(`${SEARCH_FALLBACK_URL}/search/songs`, {
+      params: { query, limit: 20 },
+      timeout: 10000,
+    });
+    const fbData = res.data;
+    if (fbData?.success && fbData?.data?.results) {
+      return fbData.data.results.map((s: any) => {
+        const dl = s.downloadUrl;
+        const streamUrl = Array.isArray(dl) ? (dl.find((d: any) => d.quality === '320kbps')?.url || dl[dl.length - 1]?.url || '') : '';
+        const img = Array.isArray(s.image) ? (s.image.find((i: any) => i.quality === '500x500')?.url || s.image[s.image.length - 1]?.url || '') : (s.image || '');
+        return {
+          id: `jiosaavn-${s.id}`,
+          source: 'jiosaavn' as const,
+          sourceId: s.id,
+          title: s.name || s.song || '',
+          artist: s.artists?.primary?.map((a: any) => a.name).join(', ') || s.primaryArtists || 'Unknown',
+          album: s.album?.name || '',
+          artwork: img,
+          duration: s.duration || 0,
+          streamUrl,
+          downloadUrl: streamUrl,
+          quality: '320kbps',
+          language: s.language || undefined,
+          year: s.year ? parseInt(s.year, 10) : undefined,
+        };
+      });
+    }
+  } catch (err) {
+    console.warn('[JIOSAAVN] Fallback search failed:', (err as Error).message);
+  }
+
+  // Last resort: filter cached trending data
+  const trending = await getCachedTrending();
+  const q = query.toLowerCase();
+  return trending.filter(s =>
+    s.title.toLowerCase().includes(q) ||
+    s.artist.toLowerCase().includes(q) ||
+    (s.album && s.album.toLowerCase().includes(q))
+  );
+}
+
+async function getCachedTrending(): Promise<Song[]> {
+  if (trendingCache.length > 0 && Date.now() - trendingCacheTime < TRENDING_CACHE_TTL) {
+    return trendingCache;
+  }
+  try {
+    const songs = await getTrending('hindi,english,telugu,tamil,punjabi');
+    trendingCache = songs;
+    trendingCacheTime = Date.now();
+    return songs;
+  } catch {
+    return trendingCache;
+  }
 }
 
 export async function getSongDetails(id: string): Promise<Song | null> {
-  const response = await axios.get<SaavnSongDetailResponse>(`${BASE_URL}/songs/${id}`, {
-    timeout: 10000,
-  });
-
-  if (!response.data.success || !response.data.data?.[0]) {
-    return null;
+  try {
+    const data = await callApi({ __call: 'song.getDetails', pids: id });
+    // Response is { "id": { ...song } } or { songs: [...] }
+    const songData = data?.songs?.[0] || data?.[id] || Object.values(data || {})[0];
+    if (songData && typeof songData === 'object' && songData.id) {
+      return mapDirectSong(songData);
+    }
+  } catch (err) {
+    console.warn('[JIOSAAVN] getSongDetails failed:', (err as Error).message);
   }
-
-  return mapSaavnSong(response.data.data[0]);
+  return null;
 }
 
 export async function getTrending(languages: string = 'hindi'): Promise<Song[]> {
@@ -178,17 +171,13 @@ export async function getTrending(languages: string = 'hindi'): Promise<Song[]> 
     const playlistIds = TRENDING_PLAYLISTS[lang] || TRENDING_PLAYLISTS['hindi'];
     for (const pid of playlistIds) {
       try {
-        const response = await axios.get<SaavnPlaylistResponse>(`${BASE_URL}/playlists`, {
-          params: { id: pid },
-          timeout: 10000,
-        });
-
-        if (response.data.success && response.data.data?.songs) {
-          for (const song of response.data.data.songs) {
-            if (!seenIds.has(song.id) && song.downloadUrl) {
-              seenIds.add(song.id);
-              songs.push(mapSaavnSong(song));
-            }
+        const data = await callApi({ __call: 'playlist.getDetails', listid: pid, n: '50' });
+        const songList = data?.songs || [];
+        for (const raw of songList) {
+          if (!seenIds.has(raw.id) && raw.media_preview_url) {
+            seenIds.add(raw.id);
+            const mapped = mapDirectSong(raw);
+            if (mapped) songs.push(mapped);
           }
         }
       } catch (err) {
@@ -201,74 +190,130 @@ export async function getTrending(languages: string = 'hindi'): Promise<Song[]> 
 }
 
 export async function getAlbum(id: string): Promise<{ album: Record<string, unknown>; songs: Song[] } | null> {
-  const response = await axios.get<SaavnAlbumResponse>(`${BASE_URL}/albums`, {
-    params: { id },
-    timeout: 10000,
-  });
-
-  if (!response.data.success || !response.data.data) {
+  try {
+    const data = await callApi({ __call: 'content.getAlbumDetails', albumid: id });
+    if (!data) return null;
+    const songList = (data.songs || []).map(mapDirectSong).filter(Boolean) as Song[];
+    return {
+      album: {
+        id: data.albumid || data.id || id,
+        name: data.title || data.name || '',
+        year: data.year || '',
+        songCount: songList.length,
+        artwork: getHighResImage(data.image || ''),
+        artists: data.primary_artists || '',
+      },
+      songs: songList,
+    };
+  } catch (err) {
+    console.warn('[JIOSAAVN] getAlbum failed:', (err as Error).message);
     return null;
   }
-
-  const data = response.data.data;
-  return {
-    album: {
-      id: data.id,
-      name: data.name,
-      year: data.year,
-      songCount: data.songCount,
-      artwork: getHighestQualityImage(data.image),
-      artists: data.artists?.primary?.map(a => a.name).join(', ') || '',
-    },
-    songs: data.songs?.map(mapSaavnSong) || [],
-  };
 }
 
 export async function getArtist(id: string): Promise<Record<string, unknown> | null> {
-  const response = await axios.get<SaavnArtistResponse>(`${BASE_URL}/artists/${id}`, {
-    timeout: 10000,
-  });
-
-  if (!response.data.success || !response.data.data) {
+  try {
+    const data = await callApi({ __call: 'content.getArtistDetails', artistId: id });
+    if (!data) return null;
+    const topSongs = (data.topSongs || data.songs || []).map(mapDirectSong).filter(Boolean) as Song[];
+    return {
+      id: data.artistId || id,
+      name: data.name || '',
+      image: getHighResImage(data.image || ''),
+      followerCount: data.follower_count || 0,
+      isVerified: data.isVerified || false,
+      topSongs,
+      topAlbums: (data.topAlbums || []).map((a: any) => ({
+        id: a.albumid || a.id,
+        name: a.title || a.name || '',
+        year: a.year || '',
+        artwork: getHighResImage(a.image || ''),
+      })),
+    };
+  } catch (err) {
+    console.warn('[JIOSAAVN] getArtist failed:', (err as Error).message);
     return null;
   }
-
-  const data = response.data.data;
-  return {
-    id: data.id,
-    name: data.name,
-    image: getHighestQualityImage(data.image),
-    followerCount: data.followerCount,
-    isVerified: data.isVerified,
-    topSongs: data.topSongs?.map(mapSaavnSong) || [],
-    topAlbums: data.topAlbums?.map(a => ({
-      id: a.id,
-      name: a.name,
-      year: a.year,
-      artwork: getHighestQualityImage(a.image),
-    })) || [],
-  };
 }
 
 export async function getPlaylist(id: string): Promise<{ playlist: Record<string, unknown>; songs: Song[] } | null> {
-  const response = await axios.get(`${BASE_URL}/playlists`, {
-    params: { id },
-    timeout: 10000,
-  });
-
-  if (!response.data.success || !response.data.data) {
+  try {
+    const data = await callApi({ __call: 'playlist.getDetails', listid: id, n: '50' });
+    if (!data) return null;
+    const songList = (data.songs || []).map(mapDirectSong).filter(Boolean) as Song[];
+    return {
+      playlist: {
+        id: data.listid || id,
+        name: data.listname || data.title || '',
+        songCount: songList.length,
+        followerCount: data.follower_count || 0,
+        artwork: getHighResImage(data.image || ''),
+      },
+      songs: songList,
+    };
+  } catch (err) {
+    console.warn('[JIOSAAVN] getPlaylist failed:', (err as Error).message);
     return null;
   }
+}
 
-  const data = response.data.data;
-  return {
-    playlist: {
-      id: data.id,
-      name: data.name,
-      songCount: data.songCount,
-      followerCount: data.followerCount,
-      artwork: getHighestQualityImage(data.image || []),
-    },
-    songs: data.songs?.map(mapSaavnSong) || [],
-  };
+// Genre/mood support — fetch songs for a genre slug using curated playlists
+export const GENRE_PLAYLISTS: Record<string, string[]> = {
+  // Genres
+  bollywood: ['1134543272', '110858205'],
+  pop: ['1134595537'],
+  hiphop: ['1134595537'],
+  classical: [],
+  lofi: [],
+  indie: ['1134595537'],
+  edm: [],
+  rock: [],
+  devotional: [],
+  ghazal: [],
+  sufi: [],
+  punjabi: ['1134543511'],
+  // Moods
+  chill: ['110858205'],
+  workout: ['110858205'],
+  romance: ['1139074020', '158225216'],
+  party: ['110858205'],
+  sad: ['1139074020'],
+  focus: ['110858205'],
+  'road-trip': ['110858205'],
+  roadtrip: ['110858205'],
+  rain: [],
+  happy: ['110858205'],
+};
+
+export async function getGenreSongs(slug: string): Promise<Song[]> {
+  const playlistIds = GENRE_PLAYLISTS[slug];
+  const songs: Song[] = [];
+  const seenIds = new Set<string>();
+
+  if (playlistIds && playlistIds.length > 0) {
+    for (const pid of playlistIds) {
+      try {
+        const data = await callApi({ __call: 'playlist.getDetails', listid: pid, n: '50' });
+        for (const raw of (data?.songs || [])) {
+          if (!seenIds.has(raw.id) && raw.media_preview_url) {
+            seenIds.add(raw.id);
+            const mapped = mapDirectSong(raw);
+            if (mapped) songs.push(mapped);
+          }
+        }
+      } catch (err) {
+        console.warn(`[JIOSAAVN] Genre playlist ${pid} failed:`, (err as Error).message);
+      }
+    }
+  }
+
+  // If no curated playlists or no results, try search then trending fallback
+  if (songs.length === 0) {
+    const searched = await searchSongs(slug);
+    if (searched.length > 0) return searched;
+    // Final fallback: return hindi trending
+    return getTrending('hindi');
+  }
+
+  return songs;
 }

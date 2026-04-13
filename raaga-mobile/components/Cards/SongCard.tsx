@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,18 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withRepeat,
+  withTiming,
+  withSequence,
+  withDelay,
+} from 'react-native-reanimated';
 import { Song } from '../../types';
 import { useDownloadStore } from '../../stores/downloadStore';
+import { usePlayerStore } from '../../stores/playerStore';
 import { colors, typography, spacing } from '../../theme';
 
 interface SongCardProps {
@@ -26,8 +35,46 @@ function formatDuration(seconds?: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function EqualizerBar({ delay: barDelay }: { delay: number }) {
+  const height = useSharedValue(4);
+
+  useEffect(() => {
+    height.value = withDelay(
+      barDelay,
+      withRepeat(
+        withSequence(
+          withTiming(16, { duration: 300 + Math.random() * 200 }),
+          withTiming(4, { duration: 300 + Math.random() * 200 })
+        ),
+        -1,
+        true
+      )
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    height: height.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width: 3,
+          borderRadius: 1.5,
+          backgroundColor: colors.defaultAccent,
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+}
+
 export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = true }: SongCardProps) {
   const isDownloaded = useDownloadStore((s) => s.isDownloaded(song.id));
+  const currentSong = usePlayerStore((s) => s.currentSong);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const isCurrentSong = currentSong?.id === song.id;
   const pressed = useSharedValue(false);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -37,7 +84,10 @@ export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = t
   return (
     <Animated.View style={animatedStyle}>
       <Pressable
-        style={styles.container}
+        style={[
+          styles.container,
+          isCurrentSong && styles.activeContainer,
+        ]}
         onPress={onPress}
         onLongPress={onLongPress}
         onPressIn={() => { pressed.value = true; }}
@@ -46,11 +96,21 @@ export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = t
         <View style={styles.artWrapper}>
           <Image
             source={{ uri: song.image }}
-            style={styles.artwork}
+            style={[
+              styles.artwork,
+              isCurrentSong && { borderColor: colors.defaultAccent, borderWidth: 2 },
+            ]}
             contentFit="cover"
             placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
             transition={200}
           />
+          {isCurrentSong && isPlaying && (
+            <View style={styles.equalizerOverlay}>
+              <EqualizerBar delay={0} />
+              <EqualizerBar delay={150} />
+              <EqualizerBar delay={300} />
+            </View>
+          )}
           {showDownloadIndicator && isDownloaded && (
             <View style={styles.downloadBadge}>
               <Ionicons name="cloud-download" size={9} color="#fff" />
@@ -58,7 +118,10 @@ export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = t
           )}
         </View>
         <View style={styles.info}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text
+            style={[styles.title, isCurrentSong && { color: colors.defaultAccent }]}
+            numberOfLines={1}
+          >
             {song.title}
           </Text>
           <Text style={styles.artist} numberOfLines={1}>
@@ -84,6 +147,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screenPadding,
     gap: spacing.md,
   },
+  activeContainer: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12,
+  },
   artWrapper: {
     position: 'relative',
   },
@@ -92,6 +159,17 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 12,
     backgroundColor: colors.surface,
+  },
+  equalizerOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 2,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 4,
+    padding: 2,
   },
   downloadBadge: {
     position: 'absolute',

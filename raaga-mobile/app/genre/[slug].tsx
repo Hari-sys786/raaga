@@ -80,10 +80,10 @@ export default function GenrePage() {
   const fetchSongs = useCallback(async () => {
     try {
       setError(null);
-      // Use trending API for language slugs, search for genres
+      // Use trending API for language slugs, genre endpoint for genres
       const data = isLanguage
         ? await api.trending(genreName)
-        : await api.search(genreName);
+        : await api.genre(genreName);
       const results = Array.isArray(data)
         ? data
         : data?.songs || data?.results || data?.data || [];
@@ -168,7 +168,7 @@ export default function GenrePage() {
 const styles = StyleSheet.create({
   headerGradient: {
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: spacing.lg,
+    paddingTop: 50,
     paddingBottom: spacing.xxl,
   },
   backButton: {
