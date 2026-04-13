@@ -8,3 +8,4 @@ ios/
 .cache/
 *.log
 package-lock.json
+raaga-mobile/node_modules/

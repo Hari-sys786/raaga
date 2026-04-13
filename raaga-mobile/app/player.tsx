@@ -5,12 +5,15 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  Share,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayerStore } from '../stores/playerStore';
 import { useDownloadStore } from '../stores/downloadStore';
 import { useLibraryStore } from '../stores/libraryStore';
@@ -30,6 +33,7 @@ export default function PlayerScreen() {
   const duration = usePlayerStore((s) => s.duration);
   const seekTo = usePlayerStore((s) => s.seekTo);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [showQueue, setShowQueue] = useState(false);
 
   const isDownloaded = useDownloadStore((s) =>
@@ -76,10 +80,22 @@ export default function PlayerScreen() {
     toggleFavorite(currentSong);
   };
 
+  const handleShare = async () => {
+    if (!currentSong) return;
+    try {
+      await Share.share({
+        message: `🎵 ${currentSong.title} — ${currentSong.artist}\nListening on Raaga`,
+        ...(Platform.OS === 'ios' ? { url: currentSong.image || '' } : {}),
+      });
+    } catch {
+      // User cancelled or share failed
+    }
+  };
+
   if (!currentSong) {
     return (
       <View style={styles.container}>
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.topButton}>
             <Ionicons name="chevron-down" size={28} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -97,7 +113,7 @@ export default function PlayerScreen() {
   if (showQueue) {
     return (
       <View style={styles.container}>
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity onPress={() => setShowQueue(false)} style={styles.topButton}>
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -119,7 +135,7 @@ export default function PlayerScreen() {
       />
 
       {/* Top Bar */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.topButton}>
           <Ionicons name="chevron-down" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -180,11 +196,8 @@ export default function PlayerScreen() {
             <Ionicons name="download-outline" size={24} color={colors.textSecondary} />
           )}
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
           <Ionicons name="share-outline" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => setShowQueue(true)}>
-          <Ionicons name="list" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -193,7 +206,7 @@ export default function PlayerScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.screenPadding, paddingTop: 54, paddingBottom: 12 },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.screenPadding, paddingBottom: 12 },
   topButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   topCenter: { flex: 1, alignItems: 'center' },
   topTitle: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: '600', textAlign: 'center' },
