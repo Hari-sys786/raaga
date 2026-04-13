@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { getLocalPath } from '../services/downloads';
 import { useLibraryStore } from './libraryStore';
 import { useSettingsStore } from './settingsStore';
+import { showNowPlaying, clearNowPlaying } from '../services/notifications';
 
 type RepeatMode = 'off' | 'one' | 'all';
 
@@ -102,6 +103,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       const uri = localPath ?? api.streamUrl(song.id, song.source || 'jiosaavn');
 
       console.log('[PlayerStore] Playing:', song.title, localPath ? '(offline)' : '(stream)');
+
+      // Show notification bar
+      showNowPlaying(song).catch(() => {});
+
       playerService.loadAndPlay(uri)
         .then(() => {
           set({ isLoading: false });
@@ -206,6 +211,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     clearQueue: () => {
       set({ queue: [], currentSong: null, isPlaying: false, progress: 0, duration: 0 });
       playerService.stop();
+      clearNowPlaying().catch(() => {});
     },
   };
 });
