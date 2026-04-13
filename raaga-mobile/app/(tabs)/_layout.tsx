@@ -2,7 +2,6 @@ import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MiniPlayer } from '../../components/Player/MiniPlayer';
 import { colors, typography } from '../../theme';
 
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
@@ -24,7 +23,6 @@ export default function TabLayout() {
         }}
         tabBar={(props) => (
           <View>
-            <MiniPlayer />
             <View style={styles.tabBarOuter}>
               <LinearGradient
                 colors={['rgba(5,5,5,0.95)', 'rgba(5,5,5,0.99)']}

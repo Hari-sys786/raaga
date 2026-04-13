@@ -10,13 +10,14 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const rawQuery = req.query.q as string;
     const type = (req.query.type as string) || 'song';
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string) || 30, 50);
 
     if (!rawQuery || typeof rawQuery !== 'string') {
       res.status(400).json({ error: 'Query parameter "q" is required' });
       return;
     }
 
-    // Sanitize: trim, limit length, strip control chars
     const query = rawQuery.trim().slice(0, 200).replace(/[\x00-\x1F\x7F]/g, '');
 
     if (query.length < 1) {
@@ -24,34 +25,68 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const validTypes = ['song', 'album', 'artist'];
+    const validTypes = ['song', 'album', 'artist', 'all'];
     if (!validTypes.includes(type)) {
       res.status(400).json({ error: `Invalid type. Use: ${validTypes.join(', ')}` });
       return;
     }
 
-    console.log(`[SEARCH] q="${query}" type="${type}"`);
+    console.log(`[SEARCH] q="${query}" type="${type}" page=${page} limit=${limit}`);
 
-    const key = cacheKey('search', type, query);
-    const cached = getCached<{ results: Song[]; total: number }>(key);
+    const key = cacheKey('search', type, query, String(page));
+    const cached = getCached<Record<string, unknown>>(key);
     if (cached) {
-      console.log(`[SEARCH] Cache hit for "${query}"`);
+      console.log(`[SEARCH] Cache hit for "${query}" p${page}`);
       res.json({ ...cached, query, cached: true });
       return;
     }
 
-    // Search JioSaavn first
+    if (type === 'all') {
+      // Return songs, albums, and artists in one response
+      const [songs, albums, artists] = await Promise.all([
+        jiosaavn.searchSongs(query, page, limit),
+        jiosaavn.searchAlbums(query),
+        jiosaavn.searchArtists(query),
+      ]);
+
+      // Also search Piped if songs are few
+      let mergedSongs = songs;
+      if (songs.length < 5) {
+        try {
+          const pipedResults = await piped.searchSongs(query);
+          const existingTitles = new Set(songs.map(r => r.title.toLowerCase()));
+          for (const pr of pipedResults) {
+            if (!existingTitles.has(pr.title.toLowerCase())) {
+              mergedSongs.push(pr);
+            }
+          }
+        } catch {}
+      }
+
+      const response = {
+        results: mergedSongs,
+        albums,
+        artists,
+        total: mergedSongs.length,
+        page,
+        hasMore: mergedSongs.length >= limit,
+      };
+      setCached(key, response, 300);
+      res.json({ ...response, query, cached: false });
+      return;
+    }
+
+    // Songs search with pagination
     let results: Song[] = [];
 
     if (type === 'song' || type === 'album' || type === 'artist') {
-      results = await jiosaavn.searchSongs(query);
+      results = await jiosaavn.searchSongs(query, page, limit);
     }
 
-    // If < 3 results, also search Piped
-    if (results.length < 3 && (type === 'song')) {
+    // If < 3 results on page 1, also search Piped
+    if (results.length < 3 && page === 1 && type === 'song') {
       try {
         const pipedResults = await piped.searchSongs(query);
-        // Merge, avoiding duplicates by title similarity
         const existingTitles = new Set(results.map(r => r.title.toLowerCase()));
         for (const pr of pipedResults) {
           if (!existingTitles.has(pr.title.toLowerCase())) {
@@ -59,12 +94,12 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
           }
         }
       } catch (err) {
-        console.warn('[SEARCH] Piped search failed, using JioSaavn results only:', (err as Error).message);
+        console.warn('[SEARCH] Piped search failed:', (err as Error).message);
       }
     }
 
-    const response = { results, total: results.length };
-    setCached(key, response, 300); // Cache 5 minutes
+    const response = { results, total: results.length, page, hasMore: results.length >= limit };
+    setCached(key, response, 300);
 
     res.json({ ...response, query, cached: false });
   } catch (err) {

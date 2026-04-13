@@ -5,21 +5,19 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
-  StatusBar,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Screen } from '../../components/Common/Screen';
 import { SongCard } from '../../components/Cards/SongCard';
 import { GlassCard } from '../../components/Common/GlassCard';
 import { colors, typography, spacing } from '../../theme';
 import { api } from '../../services/api';
 import { usePlayerStore } from '../../stores/playerStore';
 import { Song } from '../../types';
+import { FlatList } from 'react-native';
 
 const LANGUAGE_SLUGS = [
   'hindi', 'english', 'telugu', 'tamil', 'punjabi',
@@ -27,41 +25,17 @@ const LANGUAGE_SLUGS = [
 ];
 
 const GENRE_LABELS: Record<string, string> = {
-  bollywood: 'Bollywood',
-  pop: 'Pop',
-  hiphop: 'Hip-Hop',
-  classical: 'Classical',
-  lofi: 'Lo-fi',
-  indie: 'Indie',
-  edm: 'EDM',
-  rock: 'Rock',
-  devotional: 'Devotional',
-  ghazal: 'Ghazal',
-  sufi: 'Sufi',
-  punjabi: 'Punjabi',
+  bollywood: 'Bollywood', pop: 'Pop', hiphop: 'Hip-Hop', classical: 'Classical',
+  lofi: 'Lo-fi', indie: 'Indie', edm: 'EDM', rock: 'Rock',
+  devotional: 'Devotional', ghazal: 'Ghazal', sufi: 'Sufi', punjabi: 'Punjabi',
 };
 
 const GENRE_COLORS: Record<string, string> = {
-  bollywood: '#FF6B6B',
-  pop: '#4ECDC4',
-  hiphop: '#FFE66D',
-  classical: '#A8E6CF',
-  lofi: '#DDA0DD',
-  indie: '#98D8C8',
-  edm: '#F7DC6F',
-  rock: '#E74C3C',
-  devotional: '#F39C12',
-  ghazal: '#8E44AD',
-  sufi: '#2ECC71',
-  punjabi: '#E67E22',
-  hindi: '#FF6B6B',
-  english: '#4ECDC4',
-  telugu: '#FFE66D',
-  tamil: '#A8E6CF',
-  kannada: '#DDA0DD',
-  malayalam: '#98D8C8',
-  bengali: '#F7DC6F',
-  marathi: '#E74C3C',
+  bollywood: '#FF6B6B', pop: '#4ECDC4', hiphop: '#FFE66D', classical: '#A8E6CF',
+  lofi: '#DDA0DD', indie: '#98D8C8', edm: '#F7DC6F', rock: '#E74C3C',
+  devotional: '#F39C12', ghazal: '#8E44AD', sufi: '#2ECC71', punjabi: '#E67E22',
+  hindi: '#FF6B6B', english: '#4ECDC4', telugu: '#FFE66D', tamil: '#A8E6CF',
+  kannada: '#DDA0DD', malayalam: '#98D8C8', bengali: '#F7DC6F', marathi: '#E74C3C',
   gujarati: '#F39C12',
 };
 
@@ -84,7 +58,6 @@ export default function GenrePage() {
   const fetchSongs = useCallback(async () => {
     try {
       setError(null);
-      // Use trending API for language slugs, genre endpoint for genres
       const data = isLanguage
         ? await api.trending(genreName)
         : await api.genre(genreName);
@@ -117,63 +90,93 @@ export default function GenrePage() {
     [songs, play, setQueue]
   );
 
-  return (
-    <Screen scroll refreshing={refreshing} onRefresh={handleRefresh}>
-      {/* Header with gradient */}
-      <LinearGradient
-        colors={[accentColor + '25', 'transparent']}
-        style={[styles.headerGradient, { paddingTop: insets.top + 12 }]}
-      >
+  const renderSong = useCallback(
+    ({ item, index }: { item: Song; index: number }) => (
+      <Animated.View entering={FadeInDown.delay(index * 40).springify()}>
+        <SongCard song={item} onPress={() => handleSongPress(item)} />
+      </Animated.View>
+    ),
+    [handleSongPress]
+  );
+
+  const ListHeader = (
+    <LinearGradient
+      colors={[accentColor + '25', 'transparent']}
+      style={[styles.headerGradient, { paddingTop: insets.top + 8 }]}
+    >
+      <View style={styles.headerRow}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>{displayName}</Text>
-        {isLanguage && (
-          <Text style={[styles.subtitle, { color: accentColor }]}>Trending</Text>
-        )}
-      </LinearGradient>
-
-      {/* Content */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={accentColor} />
+        <View style={styles.headerText}>
+          <Text style={styles.title} numberOfLines={1}>{displayName}</Text>
+          {isLanguage && (
+            <Text style={[styles.subtitle, { color: accentColor }]}>Trending</Text>
+          )}
         </View>
-      ) : error ? (
-        <GlassCard style={styles.errorCard}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity onPress={handleRefresh} style={[styles.retryButton, { backgroundColor: accentColor }]}>
-            <Text style={styles.retryText}>Retry</Text>
-          </TouchableOpacity>
-        </GlassCard>
-      ) : songs.length === 0 ? (
-        <GlassCard style={styles.emptyCard}>
-          <Ionicons name="musical-notes" size={40} color={colors.textTertiary} />
-          <Text style={styles.emptyText}>No songs found for {displayName}</Text>
-        </GlassCard>
-      ) : (
-        songs.map((song, index) => (
-          <Animated.View key={song.id} entering={FadeInDown.delay(index * 60).springify()}>
-            <SongCard
-              song={song}
-              onPress={() => handleSongPress(song)}
-            />
-          </Animated.View>
-        ))
-      )}
+      </View>
+    </LinearGradient>
+  );
 
-      <View style={{ height: 100 }} />
-    </Screen>
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {loading ? (
+        <>
+          {ListHeader}
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={accentColor} />
+          </View>
+        </>
+      ) : error ? (
+        <>
+          {ListHeader}
+          <GlassCard style={styles.errorCard}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={handleRefresh} style={[styles.retryButton, { backgroundColor: accentColor }]}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </GlassCard>
+        </>
+      ) : songs.length === 0 ? (
+        <>
+          {ListHeader}
+          <GlassCard style={styles.emptyCard}>
+            <Ionicons name="musical-notes" size={40} color={colors.textTertiary} />
+            <Text style={styles.emptyText}>No songs found for {displayName}</Text>
+          </GlassCard>
+        </>
+      ) : (
+        <FlatList
+          data={songs}
+          keyExtractor={(item) => item.id}
+          renderItem={renderSong}
+          ListHeaderComponent={ListHeader}
+          ListFooterComponent={<View style={{ height: 80 }} />}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   headerGradient: {
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: 50,
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.lg,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
   },
   backButton: {
     width: 40,
@@ -182,17 +185,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+  },
+  headerText: {
+    flex: 1,
   },
   title: {
-    ...typography.h1,
-    fontSize: 32,
+    ...typography.h2,
     color: colors.textPrimary,
   },
   subtitle: {
-    ...typography.bodySmall,
+    ...typography.caption,
     fontWeight: '600',
-    marginTop: 4,
+    marginTop: 2,
   },
   loadingContainer: {
     height: 200,

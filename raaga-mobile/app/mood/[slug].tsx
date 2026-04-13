@@ -5,13 +5,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Screen } from '../../components/Common/Screen';
 import { SongCard } from '../../components/Cards/SongCard';
 import { GlassCard } from '../../components/Common/GlassCard';
 import { colors, typography, spacing } from '../../theme';
@@ -51,13 +51,11 @@ export default function MoodPage() {
   const fetchSongs = useCallback(async () => {
     try {
       setError(null);
-      // First try genre endpoint, then search with mood keywords
       let data = await api.genre(moodSlug);
       let results = Array.isArray(data)
         ? data
         : data?.songs || data?.results || data?.data || [];
       
-      // If genre returned no/few results, search with mood keywords
       if (results.length < 5 && config?.searchTerms) {
         const searchData = await api.search(config.searchTerms);
         const searchResults = searchData?.results || searchData?.data || searchData?.songs || [];
@@ -92,60 +90,89 @@ export default function MoodPage() {
     [songs, play, setQueue]
   );
 
-  return (
-    <Screen scroll refreshing={refreshing} onRefresh={handleRefresh}>
-      {/* Header with gradient */}
-      <LinearGradient
-        colors={[gradient[0] + '30', 'transparent']}
-        style={[styles.headerGradient, { paddingTop: insets.top + 12 }]}
-      >
+  const renderSong = useCallback(
+    ({ item, index }: { item: Song; index: number }) => (
+      <Animated.View entering={FadeInDown.delay(index * 40).springify()}>
+        <SongCard song={item} onPress={() => handleSongPress(item)} />
+      </Animated.View>
+    ),
+    [handleSongPress]
+  );
+
+  const ListHeader = (
+    <LinearGradient
+      colors={[gradient[0] + '30', 'transparent']}
+      style={[styles.headerGradient, { paddingTop: insets.top + 8 }]}
+    >
+      <View style={styles.headerRow}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>{displayName}</Text>
-      </LinearGradient>
+        <Text style={styles.title} numberOfLines={1}>{displayName}</Text>
+      </View>
+    </LinearGradient>
+  );
 
-      {/* Content */}
+  return (
+    <View style={styles.container}>
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={gradient[0]} />
-        </View>
+        <>
+          {ListHeader}
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={gradient[0]} />
+          </View>
+        </>
       ) : error ? (
-        <GlassCard style={styles.errorCard}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity onPress={handleRefresh} style={[styles.retryButton, { backgroundColor: gradient[0] }]}>
-            <Text style={styles.retryText}>Retry</Text>
-          </TouchableOpacity>
-        </GlassCard>
+        <>
+          {ListHeader}
+          <GlassCard style={styles.errorCard}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={handleRefresh} style={[styles.retryButton, { backgroundColor: gradient[0] }]}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </GlassCard>
+        </>
       ) : songs.length === 0 ? (
-        <GlassCard style={styles.emptyCard}>
-          <Ionicons name="musical-notes" size={40} color={colors.textTertiary} />
-          <Text style={styles.emptyText}>No songs found for {displayName}</Text>
-        </GlassCard>
+        <>
+          {ListHeader}
+          <GlassCard style={styles.emptyCard}>
+            <Ionicons name="musical-notes" size={40} color={colors.textTertiary} />
+            <Text style={styles.emptyText}>No songs found for {displayName}</Text>
+          </GlassCard>
+        </>
       ) : (
-        songs.map((song, index) => (
-          <Animated.View key={song.id} entering={FadeInDown.delay(index * 60).springify()}>
-            <SongCard
-              song={song}
-              onPress={() => handleSongPress(song)}
-            />
-          </Animated.View>
-        ))
+        <FlatList
+          data={songs}
+          keyExtractor={(item) => item.id}
+          renderItem={renderSong}
+          ListHeaderComponent={ListHeader}
+          ListFooterComponent={<View style={{ height: 80 }} />}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          showsVerticalScrollIndicator={false}
+        />
       )}
-
-      <View style={{ height: 100 }} />
-    </Screen>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   headerGradient: {
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: 50,
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.lg,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
   },
   backButton: {
     width: 40,
@@ -154,12 +181,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
   },
   title: {
-    ...typography.h1,
-    fontSize: 32,
+    ...typography.h2,
     color: colors.textPrimary,
+    flex: 1,
   },
   loadingContainer: {
     height: 200,
