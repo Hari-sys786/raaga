@@ -3,10 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Song } from '../../types';
 import { useDownloadStore } from '../../stores/downloadStore';
 import { colors, typography, spacing } from '../../theme';
@@ -27,43 +28,51 @@ function formatDuration(seconds?: number): string {
 
 export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = true }: SongCardProps) {
   const isDownloaded = useDownloadStore((s) => s.isDownloaded(song.id));
+  const pressed = useSharedValue(false);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: withSpring(pressed.value ? 0.97 : 1, { damping: 15, stiffness: 200 }) }],
+  }));
 
   return (
-    <TouchableOpacity
-      style={styles.container}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.artWrapper}>
-        <Image
-          source={{ uri: song.image }}
-          style={styles.artwork}
-          contentFit="cover"
-          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
-          transition={200}
-        />
-        {showDownloadIndicator && isDownloaded && (
-          <View style={styles.downloadBadge}>
-            <Ionicons name="cloud-download" size={9} color="#fff" />
-          </View>
-        )}
-      </View>
-      <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={1}>
-          {song.title}
-        </Text>
-        <Text style={styles.artist} numberOfLines={1}>
-          {song.artist}
-        </Text>
-      </View>
-      {song.duration ? (
-        <Text style={styles.duration}>{formatDuration(song.duration)}</Text>
-      ) : null}
-      <View style={styles.playIcon}>
-        <Ionicons name="play" size={14} color={colors.textPrimary} style={{ marginLeft: 2 }} />
-      </View>
-    </TouchableOpacity>
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        style={styles.container}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        onPressIn={() => { pressed.value = true; }}
+        onPressOut={() => { pressed.value = false; }}
+      >
+        <View style={styles.artWrapper}>
+          <Image
+            source={{ uri: song.image }}
+            style={styles.artwork}
+            contentFit="cover"
+            placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+            transition={200}
+          />
+          {showDownloadIndicator && isDownloaded && (
+            <View style={styles.downloadBadge}>
+              <Ionicons name="cloud-download" size={9} color="#fff" />
+            </View>
+          )}
+        </View>
+        <View style={styles.info}>
+          <Text style={styles.title} numberOfLines={1}>
+            {song.title}
+          </Text>
+          <Text style={styles.artist} numberOfLines={1}>
+            {song.artist}
+          </Text>
+        </View>
+        {song.duration ? (
+          <Text style={styles.duration}>{formatDuration(song.duration)}</Text>
+        ) : null}
+        <View style={styles.menuIcon}>
+          <Ionicons name="ellipsis-vertical" size={16} color={colors.textTertiary} />
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -71,7 +80,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: 10,
     paddingHorizontal: spacing.screenPadding,
     gap: spacing.md,
   },
@@ -79,9 +88,9 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   artwork: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
+    width: 56,
+    height: 56,
+    borderRadius: 12,
     backgroundColor: colors.surface,
   },
   downloadBadge: {
@@ -97,11 +106,12 @@ const styles = StyleSheet.create({
   },
   info: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   title: {
     ...typography.body,
     color: colors.textPrimary,
+    fontWeight: '500',
   },
   artist: {
     ...typography.caption,
@@ -110,13 +120,10 @@ const styles = StyleSheet.create({
   duration: {
     ...typography.caption,
     color: colors.textTertiary,
-    marginRight: spacing.sm,
   },
-  playIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  menuIcon: {
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },

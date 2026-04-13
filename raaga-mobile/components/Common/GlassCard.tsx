@@ -12,7 +12,7 @@ export function GlassCard({ children, style }: GlassCardProps) {
   return (
     <View style={[styles.card, style]}>
       <LinearGradient
-        colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.03)']}
+        colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -24,10 +24,10 @@ export function GlassCard({ children, style }: GlassCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderRadius: spacing.cardRadius,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
     padding: spacing.cardPadding,
     overflow: 'hidden',
   },

@@ -18,23 +18,23 @@ export function MiniPlayer() {
 
   const fraction = duration > 0 ? Math.min(progress / duration, 1) : 0;
 
-  const handlePress = () => {
-    router.push('/player');
-  };
-
   return (
     <Animated.View
-      entering={SlideInDown.duration(300)}
+      entering={SlideInDown.duration(400).springify()}
       exiting={SlideOutDown.duration(200)}
       style={styles.container}
     >
+      {/* Progress bar at the very top */}
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${fraction * 100}%` }]} />
+      </View>
       <LinearGradient
-        colors={['rgba(20,20,20,0.95)', 'rgba(10,10,10,0.98)']}
+        colors={['rgba(17,17,17,0.97)', 'rgba(8,8,8,0.99)']}
         style={StyleSheet.absoluteFill}
       />
       <TouchableOpacity
         style={styles.content}
-        onPress={handlePress}
+        onPress={() => router.push('/player')}
         activeOpacity={0.9}
       >
         <Image
@@ -54,9 +54,6 @@ export function MiniPlayer() {
         </View>
         <PlayerControls size="mini" />
       </TouchableOpacity>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${fraction * 100}%` }]} />
-      </View>
     </Animated.View>
   );
 }
@@ -64,25 +61,25 @@ export function MiniPlayer() {
 const styles = StyleSheet.create({
   container: {
     borderTopWidth: 0.5,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    borderTopColor: 'rgba(255, 255, 255, 0.04)',
     overflow: 'hidden',
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 58,
-    paddingHorizontal: 12,
-    gap: 10,
+    height: 62,
+    paddingHorizontal: 14,
+    gap: 12,
   },
   artwork: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     backgroundColor: colors.surface,
   },
   info: {
     flex: 1,
-    gap: 1,
+    gap: 2,
   },
   title: {
     ...typography.bodySmall,
@@ -91,11 +88,12 @@ const styles = StyleSheet.create({
   },
   artist: {
     fontSize: 12,
-    color: '#A0A0A0',
+    color: colors.textSecondary,
   },
   progressTrack: {
     height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    zIndex: 1,
   },
   progressFill: {
     height: 2,

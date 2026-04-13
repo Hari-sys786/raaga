@@ -1,7 +1,8 @@
 import React from 'react';
-import { Text, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text, StyleSheet, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { typography, spacing } from '../../theme';
 
 const GENRE_ICONS: Record<string, { name: string; family: 'ion' | 'mci' }> = {
@@ -33,46 +34,54 @@ interface GenreCardProps {
 
 export function GenreCard({ genre, onPress }: GenreCardProps) {
   const iconConfig = GENRE_ICONS[genre.slug];
+  const pressed = useSharedValue(false);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: withSpring(pressed.value ? 0.95 : 1, { damping: 15, stiffness: 200 }) }],
+  }));
 
   return (
-    <TouchableOpacity
-      style={styles.container}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <LinearGradient
-        colors={[genre.color + '30', genre.color + '08']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      {iconConfig?.family === 'mci' ? (
-        <MaterialCommunityIcons name={iconConfig.name as any} size={26} color={genre.color} />
-      ) : iconConfig ? (
-        <Ionicons name={iconConfig.name as any} size={26} color={genre.color} />
-      ) : (
-        <Ionicons name="musical-notes" size={26} color={genre.color} />
-      )}
-      <Text style={[styles.name, { color: genre.color }]}>{genre.name}</Text>
-    </TouchableOpacity>
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        style={styles.container}
+        onPress={onPress}
+        onPressIn={() => { pressed.value = true; }}
+        onPressOut={() => { pressed.value = false; }}
+      >
+        <LinearGradient
+          colors={[genre.color + '35', genre.color + '08']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {iconConfig?.family === 'mci' ? (
+          <MaterialCommunityIcons name={iconConfig.name as any} size={28} color={genre.color} />
+        ) : iconConfig ? (
+          <Ionicons name={iconConfig.name as any} size={28} color={genre.color} />
+        ) : (
+          <Ionicons name="musical-notes" size={28} color={genre.color} />
+        )}
+        <Text style={[styles.name, { color: genre.color }]}>{genre.name}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    width: 110,
-    height: 90,
+    width: 130,
+    height: 100,
     borderRadius: spacing.cardRadius,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.cardGap,
-    gap: spacing.xs,
+    gap: spacing.sm,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
   },
   name: {
-    ...typography.caption,
-    fontWeight: '600',
+    ...typography.bodySmall,
+    fontWeight: '700',
   },
 });
