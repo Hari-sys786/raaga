@@ -82,6 +82,7 @@ export default function TabLayout() {
                     >
                       {label}
                     </Text>
+                    {isFocused && <View style={styles.activeIndicator} />}
                   </Pressable>
                 );
               })}
@@ -117,5 +118,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  activeIndicator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.defaultAccent,
+    marginTop: 3,
   },
 });

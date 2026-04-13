@@ -8,16 +8,16 @@ import {
   Modal,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { usePlayerStore } from '../../stores/playerStore';
 import { useDownloadStore } from '../../stores/downloadStore';
 import { useLibraryStore } from '../../stores/libraryStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { downloadSong, processDownloadQueue } from '../../services/downloads';
+import { downloadSong } from '../../services/downloads';
 import { PlayerControls } from './PlayerControls';
 import { ProgressBar } from './ProgressBar';
 import { Queue } from './Queue';
 import { colors, typography, spacing } from '../../theme';
-import { formatTime } from '../../utils/formatTime';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ART_SIZE = Math.min(SCREEN_WIDTH - 80, 280);
@@ -78,7 +78,6 @@ export function FullPlayer({ visible, onClose }: FullPlayerProps) {
   const handleDownload = () => {
     if (!currentSong || isDownloaded || isDownloading) return;
     startDownload(currentSong);
-    // Trigger queue processing
     downloadSong(currentSong).catch(() => {});
   };
 
@@ -88,17 +87,6 @@ export function FullPlayer({ visible, onClose }: FullPlayerProps) {
   };
 
   if (!currentSong) return null;
-
-  // Download button icon
-  let downloadIcon = '⬇';
-  let downloadOpacity = 0.5;
-  if (isDownloaded) {
-    downloadIcon = '✅';
-    downloadOpacity = 0.8;
-  } else if (isDownloading) {
-    downloadIcon = `${Math.round(downloadProgress * 100)}%`;
-    downloadOpacity = 0.8;
-  }
 
   return (
     <Modal
@@ -110,10 +98,9 @@ export function FullPlayer({ visible, onClose }: FullPlayerProps) {
       <View style={styles.container}>
         {showQueue ? (
           <>
-            {/* Queue View */}
             <View style={styles.topBar}>
               <TouchableOpacity onPress={() => setShowQueue(false)} style={styles.topButton}>
-                <Text style={styles.chevron}>←</Text>
+                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
               <Text style={styles.topTitle}>Queue</Text>
               <View style={styles.topButton} />
@@ -125,18 +112,21 @@ export function FullPlayer({ visible, onClose }: FullPlayerProps) {
             {/* Top Bar */}
             <View style={styles.topBar}>
               <TouchableOpacity onPress={onClose} style={styles.topButton}>
-                <Text style={styles.chevron}>˅</Text>
+                <Ionicons name="chevron-down" size={28} color={colors.textPrimary} />
               </TouchableOpacity>
               <View style={styles.topCenter}>
                 <Text style={styles.topTitle} numberOfLines={1}>
                   Now Playing
                 </Text>
                 {sleepRemaining && (
-                  <Text style={styles.sleepTimer}>⏰ {sleepRemaining}</Text>
+                  <View style={styles.sleepRow}>
+                    <Ionicons name="timer-outline" size={12} color={colors.defaultAccent} />
+                    <Text style={styles.sleepTimer}>{sleepRemaining}</Text>
+                  </View>
                 )}
               </View>
               <TouchableOpacity onPress={() => setShowQueue(true)} style={styles.topButton}>
-                <Text style={styles.menuIcon}>≡</Text>
+                <Ionicons name="list" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -168,8 +158,8 @@ export function FullPlayer({ visible, onClose }: FullPlayerProps) {
                 duration={duration}
                 onSeek={seekTo}
                 showLabels
-                height={4}
-                thumbSize={12}
+                height={5}
+                thumbSize={14}
               />
             </View>
 
@@ -179,32 +169,34 @@ export function FullPlayer({ visible, onClose }: FullPlayerProps) {
             {/* Actions Row */}
             <View style={styles.actionsRow}>
               <TouchableOpacity style={styles.actionButton} onPress={handleFavorite}>
-                <Text
-                  style={[
-                    styles.actionIcon,
-                    isFavorite && styles.actionIconActive,
-                  ]}
-                >
-                  {isFavorite ? '❤️' : '♡'}
-                </Text>
+                <Ionicons
+                  name={isFavorite ? 'heart' : 'heart-outline'}
+                  size={24}
+                  color={isFavorite ? '#FF6B6B' : colors.textSecondary}
+                  style={{ opacity: isFavorite ? 1 : 0.5 }}
+                />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={handleDownload}
                 disabled={isDownloaded}
               >
-                <Text style={[styles.actionIcon, { opacity: downloadOpacity }]}>
-                  {downloadIcon}
-                </Text>
+                {isDownloaded ? (
+                  <Ionicons name="checkmark-circle" size={24} color={colors.success} style={{ opacity: 0.8 }} />
+                ) : isDownloading ? (
+                  <Text style={styles.downloadPercent}>{Math.round(downloadProgress * 100)}%</Text>
+                ) : (
+                  <Ionicons name="download-outline" size={24} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                )}
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionButton}>
-                <Text style={styles.actionIcon}>📃</Text>
+                <Ionicons name="document-text-outline" size={24} color={colors.textSecondary} style={{ opacity: 0.5 }} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => setShowQueue(true)}
               >
-                <Text style={styles.actionIcon}>≡</Text>
+                <Ionicons name="list" size={24} color={colors.textSecondary} style={{ opacity: 0.5 }} />
               </TouchableOpacity>
             </View>
           </>
@@ -237,25 +229,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  chevron: {
-    color: colors.textPrimary,
-    fontSize: 28,
-    fontWeight: '300',
-  },
   topTitle: {
     ...typography.bodySmall,
     color: colors.textSecondary,
     fontWeight: '600',
     textAlign: 'center',
   },
+  sleepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
   sleepTimer: {
     ...typography.caption,
     color: colors.defaultAccent,
-    marginTop: 2,
-  },
-  menuIcon: {
-    color: colors.textPrimary,
-    fontSize: 24,
   },
   artContainer: {
     alignItems: 'center',
@@ -300,11 +288,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionIcon: {
-    fontSize: 22,
-    opacity: 0.5,
-  },
-  actionIconActive: {
-    opacity: 1,
+  downloadPercent: {
+    ...typography.caption,
+    color: colors.defaultAccent,
+    fontWeight: '600',
   },
 });

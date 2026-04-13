@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { usePlayerStore } from '../../stores/playerStore';
 import { colors } from '../../theme';
 
@@ -18,7 +19,6 @@ export function PlayerControls({ size = 'full' }: PlayerControlsProps) {
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
   const cycleRepeat = usePlayerStore((s) => s.cycleRepeat);
 
-  const repeatIcon = repeat === 'one' ? '🔂' : '🔁';
   const repeatActive = repeat !== 'off';
 
   if (size === 'mini') {
@@ -29,14 +29,14 @@ export function PlayerControls({ size = 'full' }: PlayerControlsProps) {
           style={styles.miniButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.miniIcon}>{isPlaying ? '❚❚' : '▶'}</Text>
+          <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color={colors.textPrimary} />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={next}
           style={styles.miniButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.miniIcon}>▶▶</Text>
+          <Ionicons name="play-skip-forward" size={18} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
     );
@@ -46,12 +46,17 @@ export function PlayerControls({ size = 'full' }: PlayerControlsProps) {
     <View style={styles.container}>
       {/* Shuffle */}
       <TouchableOpacity onPress={toggleShuffle} style={styles.sideButton}>
-        <Text style={[styles.sideIcon, shuffle && styles.activeIcon]}>🔀</Text>
+        <Ionicons
+          name="shuffle"
+          size={22}
+          color={shuffle ? colors.defaultAccent : colors.textSecondary}
+          style={{ opacity: shuffle ? 1 : 0.5 }}
+        />
       </TouchableOpacity>
 
       {/* Previous */}
       <TouchableOpacity onPress={previous} style={styles.controlButton}>
-        <Text style={styles.controlIcon}>◀◀</Text>
+        <Ionicons name="play-skip-back" size={28} color={colors.textPrimary} />
       </TouchableOpacity>
 
       {/* Play/Pause - Large central button */}
@@ -60,19 +65,27 @@ export function PlayerControls({ size = 'full' }: PlayerControlsProps) {
         style={styles.playPauseButton}
         activeOpacity={0.8}
       >
-        <Text style={styles.playPauseIcon}>{isPlaying ? '❚❚' : '▶'}</Text>
+        <Ionicons
+          name={isPlaying ? 'pause' : 'play'}
+          size={30}
+          color="#FFFFFF"
+          style={!isPlaying ? { marginLeft: 3 } : undefined}
+        />
       </TouchableOpacity>
 
       {/* Next */}
       <TouchableOpacity onPress={next} style={styles.controlButton}>
-        <Text style={styles.controlIcon}>▶▶</Text>
+        <Ionicons name="play-skip-forward" size={28} color={colors.textPrimary} />
       </TouchableOpacity>
 
       {/* Repeat */}
       <TouchableOpacity onPress={cycleRepeat} style={styles.sideButton}>
-        <Text style={[styles.sideIcon, repeatActive && styles.activeIcon]}>
-          {repeatIcon}
-        </Text>
+        <Ionicons
+          name={repeat === 'one' ? 'repeat' : 'repeat-outline'}
+          size={22}
+          color={repeatActive ? colors.defaultAccent : colors.textSecondary}
+          style={{ opacity: repeatActive ? 1 : 0.5 }}
+        />
       </TouchableOpacity>
     </View>
   );
@@ -97,22 +110,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  miniIcon: {
-    color: colors.textPrimary,
-    fontSize: 14,
-  },
   sideButton: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sideIcon: {
-    fontSize: 20,
-    opacity: 0.4,
-  },
-  activeIcon: {
-    opacity: 1,
   },
   controlButton: {
     width: 48,
@@ -120,21 +122,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  controlIcon: {
-    color: colors.textPrimary,
-    fontSize: 18,
-  },
   playPauseButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: colors.defaultAccent,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  playPauseIcon: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    marginLeft: 2,
+    shadowColor: colors.defaultAccent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
 });

@@ -12,6 +12,7 @@ import { Screen } from '../../components/Common/Screen';
 import { useDownloadStore, DownloadedSong, DownloadQueueItem } from '../../stores/downloadStore';
 import { usePlayerStore } from '../../stores/playerStore';
 import { deleteSong, deleteAllDownloads, getStorageUsed } from '../../services/downloads';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../theme';
 
 function formatBytes(bytes: number): string {
@@ -78,7 +79,7 @@ function DownloadedItem({
         </Text>
       </View>
       <TouchableOpacity onPress={onDelete} style={styles.deleteButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <Text style={styles.deleteIcon}>🗑️</Text>
+        <Ionicons name="trash-outline" size={20} color={colors.textTertiary} />
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -159,10 +160,10 @@ export default function DownloadsScreen() {
           <Text style={styles.subtitle}>0 songs • 0 MB</Text>
         </View>
         <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>⬇️</Text>
+          <Ionicons name="download" size={48} color={colors.textTertiary} style={{ marginBottom: spacing.lg }} />
           <Text style={styles.emptyTitle}>No downloads yet</Text>
           <Text style={styles.emptySubtitle}>
-            Tap ⬇ on any song to download it for offline listening
+            Tap the download icon on any song to download it for offline listening
           </Text>
         </View>
         <View style={{ height: 100 }} />
@@ -316,9 +317,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteIcon: {
-    fontSize: 18,
-  },
   deleteAllContainer: {
     paddingHorizontal: spacing.screenPadding,
     paddingTop: spacing.lg,
@@ -342,10 +340,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: spacing.xxl * 3,
     paddingHorizontal: spacing.screenPadding,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: spacing.lg,
   },
   emptyTitle: {
     ...typography.h4,

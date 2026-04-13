@@ -7,7 +7,9 @@ import {
   FlatList,
   ActivityIndicator,
   Keyboard,
+  TouchableOpacity,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../components/Common/Screen';
 import { SongCard } from '../../components/Cards/SongCard';
 import { colors, typography, spacing } from '../../theme';
@@ -36,7 +38,6 @@ export default function SearchScreen() {
 
     try {
       const data = await api.search(q);
-      // Normalize response
       const songs = Array.isArray(data)
         ? data
         : data?.results || data?.songs || data?.data || [];
@@ -79,7 +80,7 @@ export default function SearchScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Search</Text>
         <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Ionicons name="search" size={18} color={colors.textTertiary} />
           <TextInput
             style={styles.input}
             placeholder="Search for songs, artists, albums..."
@@ -92,16 +93,16 @@ export default function SearchScreen() {
             selectionColor={colors.defaultAccent}
           />
           {query.length > 0 && (
-            <Text
-              style={styles.clearButton}
+            <TouchableOpacity
               onPress={() => {
                 setQuery('');
                 setResults([]);
                 setSearched(false);
               }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              ✕
-            </Text>
+              <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -113,14 +114,14 @@ export default function SearchScreen() {
         </View>
       ) : !searched ? (
         <View style={styles.centerContainer}>
-          <Text style={styles.hintEmoji}>🎶</Text>
+          <Ionicons name="musical-notes" size={48} color={colors.textTertiary} style={{ marginBottom: spacing.lg }} />
           <Text style={styles.hintText}>
             Find your next favorite song
           </Text>
         </View>
       ) : results.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Text style={styles.hintEmoji}>🤷</Text>
+          <Ionicons name="search" size={48} color={colors.textTertiary} style={{ marginBottom: spacing.lg }} />
           <Text style={styles.hintText}>
             No results for "{query}"
           </Text>
@@ -160,29 +161,17 @@ const styles = StyleSheet.create({
     height: 48,
     gap: spacing.sm,
   },
-  searchIcon: {
-    fontSize: 16,
-  },
   input: {
     flex: 1,
     ...typography.body,
     color: colors.textPrimary,
     height: '100%',
   },
-  clearButton: {
-    color: colors.textTertiary,
-    fontSize: 16,
-    padding: spacing.xs,
-  },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingBottom: 100,
-  },
-  hintEmoji: {
-    fontSize: 48,
-    marginBottom: spacing.lg,
   },
   hintText: {
     ...typography.body,

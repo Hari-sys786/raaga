@@ -14,6 +14,7 @@ import { GlassCard } from '../../components/Common/GlassCard';
 import { GenreCard } from '../../components/Cards/GenreCard';
 import { MoodCard } from '../../components/Cards/MoodCard';
 import { LanguageChip } from '../../components/Cards/LanguageChip';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../theme';
 import { api } from '../../services/api';
 import { usePlayerStore } from '../../stores/playerStore';
@@ -112,7 +113,10 @@ export default function HomeScreen() {
 
       {/* Trending Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Trending 🔥</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.screenPadding, marginBottom: spacing.lg, gap: 6 }}>
+          <Text style={[typography.h3, { color: colors.textPrimary }]}>Trending</Text>
+          <Ionicons name="flame" size={20} color="#FF6B6B" />
+        </View>
 
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -234,6 +238,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.defaultAccent,
     letterSpacing: -1,
+    textShadowColor: 'rgba(139, 92, 246, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
   },
   logoSub: {
     ...typography.h3,

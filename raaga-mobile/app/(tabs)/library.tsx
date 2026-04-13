@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../components/Common/Screen';
 import { SongCard } from '../../components/Cards/SongCard';
 import { useLibraryStore } from '../../stores/libraryStore';
@@ -29,7 +30,7 @@ export default function LibraryScreen() {
       {/* Favorites Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionIcon}>❤️</Text>
+          <Ionicons name="heart" size={20} color="#FF6B6B" />
           <Text style={styles.sectionTitle}>Favorites</Text>
           <Text style={styles.sectionCount}>{favorites.length}</Text>
         </View>
@@ -45,7 +46,7 @@ export default function LibraryScreen() {
         ) : (
           <View style={styles.sectionEmpty}>
             <Text style={styles.sectionEmptyText}>
-              No favorites yet. Tap ♡ on a song to add it here.
+              No favorites yet. Tap the heart on a song to add it here.
             </Text>
           </View>
         )}
@@ -54,7 +55,7 @@ export default function LibraryScreen() {
       {/* Recently Played Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionIcon}>🕐</Text>
+          <Ionicons name="time" size={20} color={colors.textSecondary} />
           <Text style={styles.sectionTitle}>Recently Played</Text>
           <Text style={styles.sectionCount}>{recentlyPlayed.length}</Text>
         </View>
@@ -78,7 +79,7 @@ export default function LibraryScreen() {
 
       {isEmpty && (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>🎵</Text>
+          <Ionicons name="musical-notes" size={48} color={colors.textTertiary} />
           <Text style={styles.emptyTitle}>Your library is empty</Text>
           <Text style={styles.emptySubtitle}>
             Start playing music to build your library
@@ -111,9 +112,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     gap: spacing.sm,
   },
-  sectionIcon: {
-    fontSize: 20,
-  },
   sectionTitle: {
     ...typography.h4,
     color: colors.textPrimary,
@@ -136,15 +134,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: spacing.xxl,
     paddingHorizontal: spacing.screenPadding,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: spacing.lg,
+    gap: spacing.md,
   },
   emptyTitle: {
     ...typography.h4,
     color: colors.textSecondary,
-    marginBottom: spacing.sm,
   },
   emptySubtitle: {
     ...typography.bodySmall,

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { usePlayerStore } from '../../stores/playerStore';
@@ -27,12 +28,15 @@ export function MiniPlayer() {
       exiting={SlideOutDown.duration(200)}
       style={styles.container}
     >
+      <LinearGradient
+        colors={['rgba(20,20,20,0.95)', 'rgba(10,10,10,0.98)']}
+        style={StyleSheet.absoluteFill}
+      />
       <TouchableOpacity
         style={styles.content}
         onPress={handlePress}
         activeOpacity={0.9}
       >
-        {/* Album Art */}
         <Image
           source={{ uri: currentSong.image }}
           style={styles.artwork}
@@ -40,8 +44,6 @@ export function MiniPlayer() {
           placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
           transition={200}
         />
-
-        {/* Song Info */}
         <View style={styles.info}>
           <Text style={styles.title} numberOfLines={1}>
             {currentSong.title}
@@ -50,12 +52,8 @@ export function MiniPlayer() {
             {currentSong.artist}
           </Text>
         </View>
-
-        {/* Controls */}
         <PlayerControls size="mini" />
       </TouchableOpacity>
-
-      {/* Thin progress bar at bottom */}
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${fraction * 100}%` }]} />
       </View>
@@ -65,7 +63,6 @@ export function MiniPlayer() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#141414',
     borderTopWidth: 0.5,
     borderTopColor: 'rgba(255, 255, 255, 0.06)',
     overflow: 'hidden',

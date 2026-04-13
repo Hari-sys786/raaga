@@ -24,8 +24,8 @@ export function ProgressBar({
   duration,
   onSeek,
   showLabels = true,
-  height = 4,
-  thumbSize = 12,
+  height = 5,
+  thumbSize = 14,
 }: ProgressBarProps) {
   const fraction = duration > 0 ? Math.min(progress / duration, 1) : 0;
   const [trackWidth, setTrackWidth] = React.useState(0);
@@ -59,7 +59,7 @@ export function ProgressBar({
             ]}
           />
         </View>
-        {/* Thumb */}
+        {/* Thumb with glow */}
         {duration > 0 && (
           <View
             style={[
@@ -72,6 +72,11 @@ export function ProgressBar({
                 marginLeft: -(thumbSize / 2),
                 top: 0,
                 bottom: 0,
+                shadowColor: colors.defaultAccent,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.6,
+                shadowRadius: 6,
+                elevation: 4,
               },
             ]}
           />
@@ -99,12 +104,12 @@ const styles = StyleSheet.create({
   track: {
     width: '100%',
     backgroundColor: '#333333',
-    borderRadius: 2,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   trackFilled: {
     backgroundColor: colors.defaultAccent,
-    borderRadius: 2,
+    borderRadius: 3,
   },
   thumb: {
     position: 'absolute',

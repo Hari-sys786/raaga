@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { Song } from '../../types';
 import { useDownloadStore } from '../../stores/downloadStore';
 import { colors, typography, spacing } from '../../theme';
@@ -44,7 +45,7 @@ export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = t
         />
         {showDownloadIndicator && isDownloaded && (
           <View style={styles.downloadBadge}>
-            <Text style={styles.downloadBadgeText}>⬇</Text>
+            <Ionicons name="cloud-download" size={9} color="#fff" />
           </View>
         )}
       </View>
@@ -60,7 +61,7 @@ export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = t
         <Text style={styles.duration}>{formatDuration(song.duration)}</Text>
       ) : null}
       <View style={styles.playIcon}>
-        <Text style={styles.playIconText}>▶</Text>
+        <Ionicons name="play" size={14} color={colors.textPrimary} style={{ marginLeft: 2 }} />
       </View>
     </TouchableOpacity>
   );
@@ -94,10 +95,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  downloadBadgeText: {
-    fontSize: 8,
-    color: '#fff',
-  },
   info: {
     flex: 1,
     gap: 2,
@@ -122,10 +119,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  playIconText: {
-    color: colors.textPrimary,
-    fontSize: 12,
-    marginLeft: 2,
   },
 });

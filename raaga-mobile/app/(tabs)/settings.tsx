@@ -7,6 +7,7 @@ import {
   Alert,
   Switch,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Screen } from '../../components/Common/Screen';
 import { GlassCard } from '../../components/Common/GlassCard';
@@ -63,6 +64,7 @@ function SettingRow({
     >
       <Text style={styles.settingLabel}>{label}</Text>
       <Text style={styles.settingValue}>{value}{onPress ? ' ▾' : ''}</Text>
+      {onPress && <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />}
     </TouchableOpacity>
   );
 }
@@ -174,7 +176,10 @@ export default function SettingsScreen() {
 
       {/* Audio Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>AUDIO</Text>
+        <View style={styles.sectionLabelRow}>
+          <Ionicons name="volume-medium" size={14} color={colors.textTertiary} />
+          <Text style={styles.sectionLabel}>AUDIO</Text>
+        </View>
         <GlassCard style={styles.sectionCard}>
           <SettingRow
             label="Streaming Quality"
@@ -212,14 +217,17 @@ export default function SettingsScreen() {
             activeOpacity={0.7}
           >
             <Text style={styles.settingLabel}>Equalizer</Text>
-            <Text style={styles.settingValue}>→</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
           </TouchableOpacity>
         </GlassCard>
       </View>
 
       {/* Playback Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>PLAYBACK</Text>
+        <View style={styles.sectionLabelRow}>
+          <Ionicons name="play-circle" size={14} color={colors.textTertiary} />
+          <Text style={styles.sectionLabel}>PLAYBACK</Text>
+        </View>
         <GlassCard style={styles.sectionCard}>
           <SettingRow
             label="Sleep Timer"
@@ -261,7 +269,10 @@ export default function SettingsScreen() {
 
       {/* Storage Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>STORAGE</Text>
+        <View style={styles.sectionLabelRow}>
+          <Ionicons name="folder" size={14} color={colors.textTertiary} />
+          <Text style={styles.sectionLabel}>STORAGE</Text>
+        </View>
         <GlassCard style={styles.sectionCard}>
           <SettingRow label="Downloads" value={formatBytes(downloadSize)} />
           <View style={styles.divider} />
@@ -282,12 +293,15 @@ export default function SettingsScreen() {
 
       {/* About Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>ABOUT</Text>
+        <View style={styles.sectionLabelRow}>
+          <Ionicons name="information-circle" size={14} color={colors.textTertiary} />
+          <Text style={styles.sectionLabel}>ABOUT</Text>
+        </View>
         <GlassCard style={styles.sectionCard}>
           <SettingRow label="Version" value="1.0.0" />
           <View style={styles.divider} />
           <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>Made with ❤️ by Panda Dev</Text>
+            <Text style={styles.settingLabel}>Made with love by Panda Dev</Text>
           </View>
         </GlassCard>
       </View>
@@ -315,6 +329,11 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textTertiary,
     letterSpacing: 1,
+  },
+  sectionLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: spacing.sm,
   },
   sectionCard: {

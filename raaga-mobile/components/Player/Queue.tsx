@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { usePlayerStore } from '../../stores/playerStore';
 import { colors, typography, spacing } from '../../theme';
 import { Song } from '../../types';
@@ -25,7 +26,6 @@ export function Queue({ onClose }: QueueProps) {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Now Playing</Text>
         <TouchableOpacity onPress={clearQueue}>
@@ -46,9 +46,13 @@ export function Queue({ onClose }: QueueProps) {
               onPress={() => playFromQueue(index)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.index, isCurrent && styles.indexActive]}>
-                {isCurrent ? '♪' : `${index + 1}`}
-              </Text>
+              <View style={[styles.indexContainer, isCurrent && styles.indexContainerActive]}>
+                {isCurrent ? (
+                  <Ionicons name="musical-note" size={16} color={colors.defaultAccent} />
+                ) : (
+                  <Text style={styles.index}>{index + 1}</Text>
+                )}
+              </View>
               <Image
                 source={{ uri: song.image }}
                 style={styles.artwork}
@@ -109,15 +113,16 @@ const styles = StyleSheet.create({
   itemActive: {
     backgroundColor: 'rgba(139, 92, 246, 0.08)',
   },
-  index: {
+  indexContainer: {
     width: 24,
-    textAlign: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  indexContainerActive: {},
+  index: {
     ...typography.caption,
     color: colors.textTertiary,
-  },
-  indexActive: {
-    color: colors.defaultAccent,
-    fontSize: 16,
+    textAlign: 'center',
   },
   artwork: {
     width: 40,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { spacing } from '../../theme';
 
 interface GlassCardProps {
@@ -8,11 +9,14 @@ interface GlassCardProps {
 }
 
 export function GlassCard({ children, style }: GlassCardProps) {
-  // Note: True blur requires @react-native-community/blur which needs
-  // native modules. For Expo Go compatibility, we use a semi-transparent
-  // approximation. Switch to BlurView in production builds.
   return (
     <View style={[styles.card, style]}>
+      <LinearGradient
+        colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.03)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       {children}
     </View>
   );
@@ -20,7 +24,7 @@ export function GlassCard({ children, style }: GlassCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: spacing.cardRadius,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
