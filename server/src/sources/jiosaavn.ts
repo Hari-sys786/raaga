@@ -9,6 +9,18 @@ const LANG_COOKIE = 'L=hindi,english,telugu,tamil,punjabi,kannada,malayalam,beng
 
 const HEADERS = { 'User-Agent': UA };
 
+// Decode HTML entities from JioSaavn API responses
+function decodeEntities(str: string): string {
+  if (!str) return str;
+  return str
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&apos;/g, "'");
+}
+
 // Curated playlist IDs per language
 const TRENDING_PLAYLISTS: Record<string, string[]> = {
   hindi: ['1134543272', '110858205'],
@@ -48,9 +60,9 @@ function mapDirectSong(raw: any): Song | null {
     id: `jiosaavn-${raw.id}`,
     source: 'jiosaavn',
     sourceId: raw.id,
-    title: raw.song || raw.title || '',
-    artist: raw.primary_artists || raw.singers || 'Unknown',
-    album: raw.album || '',
+    title: decodeEntities(raw.song || raw.title || ''),
+    artist: decodeEntities(raw.primary_artists || raw.singers || 'Unknown'),
+    album: decodeEntities(raw.album || ''),
     artwork: art,
     image: art,
     duration: parseInt(raw.duration, 10) || 0,
@@ -110,9 +122,9 @@ export async function searchSongs(query: string): Promise<Song[]> {
           id: `jiosaavn-${s.id}`,
           source: 'jiosaavn' as const,
           sourceId: s.id,
-          title: s.name || s.song || '',
-          artist: s.artists?.primary?.map((a: any) => a.name).join(', ') || s.primaryArtists || 'Unknown',
-          album: s.album?.name || '',
+          title: decodeEntities(s.name || s.song || ''),
+          artist: decodeEntities(s.artists?.primary?.map((a: any) => a.name).join(', ') || s.primaryArtists || 'Unknown'),
+          album: decodeEntities(s.album?.name || ''),
           artwork: img,
           image: img,
           duration: s.duration || 0,
@@ -177,9 +189,9 @@ export async function getSongDetails(id: string): Promise<Song | null> {
           id: `jiosaavn-${s.id}`,
           source: 'jiosaavn',
           sourceId: s.id,
-          title: s.name || s.song || '',
-          artist: s.artists?.primary?.map((a: any) => a.name).join(', ') || s.primaryArtists || 'Unknown',
-          album: s.album?.name || s.album || '',
+          title: decodeEntities(s.name || s.song || ''),
+          artist: decodeEntities(s.artists?.primary?.map((a: any) => a.name).join(', ') || s.primaryArtists || 'Unknown'),
+          album: decodeEntities(s.album?.name || s.album || ''),
           artwork: img,
           image: img,
           duration: s.duration || 0,

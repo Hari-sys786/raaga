@@ -1,13 +1,14 @@
 import React from 'react';
 import {
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   ScrollView,
   View,
   ViewStyle,
   RefreshControl,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme';
 
 interface ScreenProps {
@@ -28,8 +29,12 @@ export function Screen({
   const Container = scroll ? ScrollView : View;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={colors.background}
+        translucent={false}
+      />
       <Container
         style={[styles.container, style]}
         {...(scroll && {

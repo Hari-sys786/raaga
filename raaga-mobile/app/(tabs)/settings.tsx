@@ -6,9 +6,12 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '../../components/Common/Screen';
 import { GlassCard } from '../../components/Common/GlassCard';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -46,6 +49,127 @@ function formatBytes(bytes: number): string {
   return mb < 0.1 ? `${(bytes / 1024).toFixed(0)} KB` : `${mb.toFixed(1)} MB`;
 }
 
+// Dark bottom sheet picker
+function BottomPicker({
+  visible,
+  title,
+  options,
+  selected,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  title: string;
+  options: { label: string; value: string }[];
+  selected?: string;
+  onSelect: (value: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={pickerStyles.overlay} onPress={onClose}>
+        <View style={pickerStyles.sheet}>
+          {/* Handle */}
+          <View style={pickerStyles.handle} />
+          <Text style={pickerStyles.title}>{title}</Text>
+          <View style={pickerStyles.divider} />
+          {options.map((opt) => {
+            const isActive = opt.value === selected;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={pickerStyles.option}
+                onPress={() => {
+                  onSelect(opt.value);
+                  onClose();
+                }}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    pickerStyles.optionText,
+                    isActive && pickerStyles.optionTextActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+                {isActive && (
+                  <Ionicons name="checkmark" size={20} color={colors.defaultAccent} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+          <TouchableOpacity style={pickerStyles.cancelButton} onPress={onClose}>
+            <Text style={pickerStyles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const pickerStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
+    paddingTop: 8,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    paddingHorizontal: 24,
+    paddingBottom: 12,
+  },
+  divider: {
+    height: 0.5,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: 24,
+    marginBottom: 4,
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
+  optionText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    fontSize: 16,
+  },
+  optionTextActive: {
+    color: colors.defaultAccent,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    marginTop: 8,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    paddingTop: 16,
+    alignItems: 'center',
+  },
+  cancelText: {
+    ...typography.body,
+    color: colors.textTertiary,
+  },
+});
+
 function SettingRow({
   label,
   value,
@@ -63,8 +187,10 @@ function SettingRow({
       activeOpacity={0.7}
     >
       <Text style={styles.settingLabel}>{label}</Text>
-      <Text style={styles.settingValue}>{value}{onPress ? ' ▾' : ''}</Text>
-      {onPress && <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />}
+      <View style={styles.settingRight}>
+        <Text style={styles.settingValue}>{value}</Text>
+        {onPress && <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />}
+      </View>
     </TouchableOpacity>
   );
 }
@@ -91,26 +217,9 @@ function SettingToggle({
   );
 }
 
-function showPicker(
-  title: string,
-  options: { label: string; value: string }[],
-  onSelect: (value: string) => void
-) {
-  Alert.alert(
-    title,
-    undefined,
-    [
-      ...options.map((opt) => ({
-        text: opt.label,
-        onPress: () => onSelect(opt.value),
-      })),
-      { text: 'Cancel', style: 'cancel' as const },
-    ]
-  );
-}
-
 export default function SettingsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const streamingQuality = useSettingsStore((s) => s.streamingQuality);
   const downloadQuality = useSettingsStore((s) => s.downloadQuality);
   const sleepTimer = useSettingsStore((s) => s.sleepTimer);
@@ -125,10 +234,36 @@ export default function SettingsScreen() {
   const [downloadSize, setDownloadSize] = useState(0);
   const [cacheSize, setCacheSize] = useState(0);
 
+  // Picker state
+  const [pickerConfig, setPickerConfig] = useState<{
+    visible: boolean;
+    title: string;
+    options: { label: string; value: string }[];
+    selected?: string;
+    onSelect: (value: string) => void;
+  }>({
+    visible: false,
+    title: '',
+    options: [],
+    onSelect: () => {},
+  });
+
+  const openPicker = (
+    title: string,
+    options: { label: string; value: string }[],
+    selected: string,
+    onSelect: (value: string) => void
+  ) => {
+    setPickerConfig({ visible: true, title, options, selected, onSelect });
+  };
+
+  const closePicker = () => {
+    setPickerConfig((prev) => ({ ...prev, visible: false }));
+  };
+
   const refreshStorage = useCallback(async () => {
     const used = await getStorageUsed();
     setDownloadSize(used);
-    // Estimate cache from expo cache dir
     try {
       if (cacheDirectory) {
         const info = await getInfoAsync(cacheDirectory);
@@ -166,11 +301,11 @@ export default function SettingsScreen() {
   };
 
   const sleepLabel = sleepTimer ? `${sleepTimer} min` : 'Off';
-  const speedLabel = playbackSpeed === 1.0 ? '1.0x' : `${playbackSpeed}x`;
+  const speedLabel = playbackSpeed === 1.0 ? '1.0×' : `${playbackSpeed}×`;
 
   return (
     <Screen scroll>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.title}>Settings</Text>
       </View>
 
@@ -185,13 +320,14 @@ export default function SettingsScreen() {
             label="Streaming Quality"
             value={QUALITY_SHORT[streamingQuality]}
             onPress={() =>
-              showPicker(
+              openPicker(
                 'Streaming Quality',
                 (['96', '160', '320'] as AudioQuality[]).map((q) => ({
                   label: QUALITY_LABELS[q],
                   value: q,
                 })),
-                (v: string) => setStreamingQuality(v as AudioQuality)
+                streamingQuality,
+                (v) => setStreamingQuality(v as AudioQuality)
               )
             }
           />
@@ -200,13 +336,14 @@ export default function SettingsScreen() {
             label="Download Quality"
             value={QUALITY_SHORT[downloadQuality]}
             onPress={() =>
-              showPicker(
+              openPicker(
                 'Download Quality',
                 (['96', '160', '320'] as AudioQuality[]).map((q) => ({
                   label: QUALITY_LABELS[q],
                   value: q,
                 })),
-                (v: string) => setDownloadQuality(v as AudioQuality)
+                downloadQuality,
+                (v) => setDownloadQuality(v as AudioQuality)
               )
             }
           />
@@ -233,13 +370,11 @@ export default function SettingsScreen() {
             label="Sleep Timer"
             value={sleepLabel}
             onPress={() =>
-              showPicker(
+              openPicker(
                 'Sleep Timer',
-                SLEEP_OPTIONS.map((o) => ({
-                  label: o.label,
-                  value: o.value,
-                })),
-                (v: string) => setSleepTimer(v === 'off' ? null : Number(v))
+                SLEEP_OPTIONS,
+                sleepTimer ? String(sleepTimer) : 'off',
+                (v) => setSleepTimer(v === 'off' ? null : Number(v))
               )
             }
           />
@@ -254,13 +389,11 @@ export default function SettingsScreen() {
             label="Playback Speed"
             value={speedLabel}
             onPress={() =>
-              showPicker(
+              openPicker(
                 'Playback Speed',
-                SPEED_OPTIONS.map((s) => ({
-                  label: `${s}x`,
-                  value: s,
-                })),
-                (v: string) => setPlaybackSpeed(Number(v))
+                SPEED_OPTIONS.map((s) => ({ label: `${s}×`, value: s })),
+                String(playbackSpeed),
+                (v) => setPlaybackSpeed(Number(v))
               )
             }
           />
@@ -301,12 +434,22 @@ export default function SettingsScreen() {
           <SettingRow label="Version" value="1.0.0" />
           <View style={styles.divider} />
           <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>Made with love by Panda Dev</Text>
+            <Text style={styles.settingLabel}>Made with ❤️ by Panda Dev</Text>
           </View>
         </GlassCard>
       </View>
 
       <View style={{ height: 100 }} />
+
+      {/* Picker Modal */}
+      <BottomPicker
+        visible={pickerConfig.visible}
+        title={pickerConfig.title}
+        options={pickerConfig.options}
+        selected={pickerConfig.selected}
+        onSelect={pickerConfig.onSelect}
+        onClose={closePicker}
+      />
     </Screen>
   );
 }
@@ -314,7 +457,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: spacing.xxl,
     paddingBottom: spacing.lg,
   },
   title: {
@@ -351,6 +493,11 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textPrimary,
     flex: 1,
+  },
+  settingRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   settingValue: {
     ...typography.body,
