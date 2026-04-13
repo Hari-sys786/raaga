@@ -6,24 +6,28 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '../../components/Common/Screen';
 import { SongCard } from '../../components/Cards/SongCard';
-import { AlbumCard } from '../../components/Cards/AlbumCard';
-import { ArtistChip } from '../../components/Cards/ArtistChip';
 import { GlassCard } from '../../components/Common/GlassCard';
 import { colors, typography, spacing } from '../../theme';
 import { api } from '../../services/api';
 import { usePlayerStore } from '../../stores/playerStore';
-import { Song, Artist, Album } from '../../types';
+import { Song } from '../../types';
 
 export default function ArtistPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [artist, setArtist] = useState<Artist | null>(null);
+  const insets = useSafeAreaInsets();
+  const [artist, setArtist] = useState<any>(null);
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [albums, setAlbums] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const play = usePlayerStore((s) => s.play);
@@ -34,10 +38,20 @@ export default function ArtistPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await api.artist(id);
-      // Normalize: API may return nested or flat
-      const normalized: Artist = data?.artist || data;
-      setArtist(normalized);
+      const res = await api.artist(id);
+      // API returns { data: { id, name, image, topSongs, topAlbums, ... } }
+      const d = res?.data || res;
+      setArtist(d);
+      setSongs(d?.topSongs || []);
+      // Normalize albums: server returns { id, name, year, artwork }
+      const rawAlbums = d?.topAlbums || [];
+      setAlbums(rawAlbums.map((a: any) => ({
+        id: a.id || a.albumid,
+        title: a.name || a.title || '',
+        artist: d?.name || '',
+        image: a.artwork || a.image || '',
+        year: a.year || '',
+      })));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load artist');
     } finally {
@@ -49,27 +63,25 @@ export default function ArtistPage() {
     fetchArtist();
   }, [fetchArtist]);
 
-  const topSongs = artist?.topSongs || [];
-
   const handlePlayAll = useCallback(() => {
-    if (topSongs.length === 0) return;
-    setQueue(topSongs);
-    play(topSongs[0]);
-  }, [topSongs, play, setQueue]);
+    if (songs.length === 0) return;
+    setQueue(songs);
+    play(songs[0]);
+  }, [songs, play, setQueue]);
 
   const handleShuffle = useCallback(() => {
-    if (topSongs.length === 0) return;
-    const shuffled = [...topSongs].sort(() => Math.random() - 0.5);
+    if (songs.length === 0) return;
+    const shuffled = [...songs].sort(() => Math.random() - 0.5);
     setQueue(shuffled);
     play(shuffled[0]);
-  }, [topSongs, play, setQueue]);
+  }, [songs, play, setQueue]);
 
   const handleSongPress = useCallback(
     (song: Song) => {
-      setQueue(topSongs);
+      setQueue(songs);
       play(song);
     },
-    [topSongs, play, setQueue]
+    [songs, play, setQueue]
   );
 
   if (loading) {
@@ -99,86 +111,102 @@ export default function ArtistPage() {
 
   return (
     <Screen scroll>
-      {/* Back Button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => router.back()}
+      {/* Header with gradient */}
+      <LinearGradient
+        colors={[colors.defaultAccent + '20', 'transparent']}
+        style={[styles.headerGradient, { paddingTop: insets.top + 8 }]}
       >
-        <Text style={styles.backText}>← Back</Text>
-      </TouchableOpacity>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>Artist</Text>
+        </View>
 
-      {/* Artist Header */}
-      <View style={styles.header}>
-        <Image
-          source={{ uri: artist.image }}
-          style={styles.artistImage}
-          contentFit="cover"
-          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
-          transition={300}
-        />
-        <Text style={styles.artistName}>{artist.name}</Text>
-        {artist.bio ? (
-          <Text style={styles.bio} numberOfLines={2}>
-            {artist.bio}
-          </Text>
-        ) : null}
-      </View>
+        <View style={styles.artistHeader}>
+          <Image
+            source={{ uri: artist.image }}
+            style={styles.artistImage}
+            contentFit="cover"
+            placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+            transition={300}
+          />
+          <Text style={styles.artistName}>{artist.name || 'Unknown Artist'}</Text>
+          {artist.followerCount > 0 && (
+            <Text style={styles.followers}>
+              {Number(artist.followerCount).toLocaleString()} followers
+            </Text>
+          )}
+        </View>
+      </LinearGradient>
 
       {/* Action Buttons */}
-      {topSongs.length > 0 && (
+      {songs.length > 0 && (
         <View style={styles.actions}>
-          <TouchableOpacity
-            style={styles.playAllButton}
-            onPress={handlePlayAll}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.actionButtonText}>▶ Play All</Text>
+          <TouchableOpacity style={styles.playAllButton} onPress={handlePlayAll} activeOpacity={0.7}>
+            <Ionicons name="play" size={18} color={colors.textPrimary} />
+            <Text style={styles.actionButtonText}>Play All</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.shuffleButton}
-            onPress={handleShuffle}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.actionButtonText}>🔀 Shuffle</Text>
+          <TouchableOpacity style={styles.shuffleButton} onPress={handleShuffle} activeOpacity={0.7}>
+            <Ionicons name="shuffle" size={18} color={colors.textPrimary} />
+            <Text style={styles.actionButtonText}>Shuffle</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {/* Top Songs */}
-      {topSongs.length > 0 && (
+      {songs.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Top Songs</Text>
-          {topSongs.slice(0, 20).map((song) => (
-            <SongCard
-              key={song.id}
-              song={song}
-              onPress={() => handleSongPress(song)}
-            />
+          {songs.map((song, index) => (
+            <Animated.View key={song.id} entering={FadeInDown.delay(index * 30).springify()}>
+              <SongCard song={song} onPress={() => handleSongPress(song)} />
+            </Animated.View>
           ))}
         </View>
       )}
 
       {/* Albums */}
-      {artist.albums && artist.albums.length > 0 && (
+      {albums.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Albums</Text>
           <FlatList
-            data={artist.albums}
+            data={albums}
             keyExtractor={(item) => item.id}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalList}
             renderItem={({ item }) => (
-              <AlbumCard
-                album={item}
+              <TouchableOpacity
+                style={styles.albumCard}
                 onPress={() => router.push(`/album/${item.id}`)}
-              />
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={{ uri: item.image }}
+                  style={styles.albumImage}
+                  contentFit="cover"
+                  placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+                />
+                <Text style={styles.albumTitle} numberOfLines={1}>{item.title}</Text>
+                {item.year ? <Text style={styles.albumYear}>{item.year}</Text> : null}
+              </TouchableOpacity>
             )}
           />
         </View>
       )}
 
-      {/* Bottom spacer */}
+      {songs.length === 0 && albums.length === 0 && (
+        <GlassCard style={styles.emptyCard}>
+          <Ionicons name="musical-notes" size={40} color={colors.textTertiary} />
+          <Text style={styles.emptyText}>No songs or albums found</Text>
+        </GlassCard>
+      )}
+
       <View style={{ height: 100 }} />
     </Screen>
   );
@@ -191,20 +219,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.screenPadding,
   },
-  backButton: {
+  headerGradient: {
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.lg,
   },
-  backText: {
-    ...typography.body,
-    color: colors.defaultAccent,
-  },
-  header: {
+  headerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.screenPadding,
-    paddingVertical: spacing.xl,
-    gap: spacing.md,
+    gap: 14,
+    height: 48,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  artistHeader: {
+    alignItems: 'center',
+    paddingTop: spacing.lg,
+    gap: spacing.sm,
   },
   artistImage: {
     width: 120,
@@ -219,11 +259,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     textAlign: 'center',
   },
-  bio: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
+  followers: {
+    ...typography.caption,
+    color: colors.textTertiary,
   },
   actions: {
     flexDirection: 'row',
@@ -233,12 +271,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   playAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: colors.defaultAccent,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: spacing.buttonRadiusLarge,
   },
   shuffleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: colors.surfaceElevated,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
@@ -252,16 +296,47 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   section: {
-    marginBottom: spacing.sectionGap,
+    marginBottom: spacing.xl,
   },
   sectionTitle: {
     ...typography.h3,
     color: colors.textPrimary,
     paddingHorizontal: spacing.screenPadding,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   horizontalList: {
     paddingHorizontal: spacing.screenPadding,
+    gap: 12,
+  },
+  albumCard: {
+    width: 130,
+  },
+  albumImage: {
+    width: 130,
+    height: 130,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+    marginBottom: 6,
+  },
+  albumTitle: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  albumYear: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    fontSize: 11,
+  },
+  emptyCard: {
+    marginHorizontal: spacing.screenPadding,
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   errorCard: {
     alignItems: 'center',
