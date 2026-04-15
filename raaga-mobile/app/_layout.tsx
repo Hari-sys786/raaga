@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Stack, usePathname } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
 import { MiniPlayer } from '../components/Player/MiniPlayer';
+import { usePlayerStore } from '../stores/playerStore';
 import { colors } from '../theme';
 
 export default function RootLayout() {
@@ -10,6 +12,11 @@ export default function RootLayout() {
   // For other stack screens (genre, mood, artist, album, trending), show it from root
   const isTabScreen = pathname === '/' || pathname === '/search' || pathname === '/library' || pathname === '/downloads' || pathname === '/settings';
   const showMiniPlayer = !isPlayerOpen && !isTabScreen;
+
+  // Restore persisted player state on app launch
+  useEffect(() => {
+    usePlayerStore.getState().restorePlayback();
+  }, []);
 
   return (
     <View style={styles.root}>

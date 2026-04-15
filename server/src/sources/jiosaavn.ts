@@ -357,32 +357,61 @@ export async function getPlaylist(id: string): Promise<{ playlist: Record<string
   }
 }
 
-// Genre/mood support — fetch songs for a genre slug using curated playlists
+// Genre/mood support — fetch songs using curated playlists + targeted search
+// Each mood/genre has UNIQUE playlist IDs — never share the same playlist across categories
+
 export const GENRE_PLAYLISTS: Record<string, string[]> = {
-  // Genres
-  bollywood: ['1134543272', '110858205'],
-  pop: ['1134595537'],
-  hiphop: ['1134595537'],
-  classical: [],
-  lofi: [],
-  indie: ['1134595537'],
-  edm: [],
-  rock: [],
-  devotional: [],
-  ghazal: [],
-  sufi: [],
+  // Genres — unique curated playlists per genre
+  bollywood: ['1080335349', '1265126272'],     // Hindi Hit Songs, Chartbusters 2025
+  pop: ['1265127670', '156473621'],             // Pop Hits 2025, Asli Pop
+  hiphop: [],                                    // search-based (no good curated playlist)
+  classical: [],                                 // search-based
+  lofi: [],                                      // search-based
+  indie: ['107605145'],                          // Best Of Indie - Hindi
+  edm: ['1265128038', '932189657'],             // Dance Hits 2025, Best Of Dance
+  rock: [],                                      // search-based
+  devotional: [],                                // search-based
+  ghazal: ['77076833'],                          // Best Of Ghazals - Hindi
+  sufi: [],                                      // search-based
   punjabi: ['1134543511'],
-  // Moods
-  chill: ['110858205'],
-  workout: ['110858205'],
-  romance: ['1139074020', '158225216'],
-  party: ['110858205'],
-  sad: ['1139074020'],
-  focus: ['110858205'],
-  'road-trip': ['110858205'],
-  roadtrip: ['110858205'],
-  rain: [],
-  happy: ['110858205'],
+
+  // Moods — each mood has its OWN distinct playlists, no sharing
+  chill: ['158223987'],                          // Chill Maaro
+  workout: ['111163065'],                        // Workout - 1 Hour
+  romance: ['903166403', '1265126631'],          // Best Of Romance, Romantic Hits 2025
+  party: ['5148894', '932189657'],               // Nach Le, Best Of Dance
+  sad: ['149267518'],                            // Indipop Sad Songs
+  focus: [],                                     // search-based (study/focus)
+  'road-trip': ['6689255'],                      // Taaza Tunes
+  roadtrip: ['6689255'],                         // Taaza Tunes
+  rain: [],                                      // search-based (monsoon/rain)
+  happy: ['1265126272', '49'],                   // Chartbusters 2025, Dumdaar Hits
+};
+
+// Targeted search queries per mood/genre — used when playlists return too few results
+const GENRE_SEARCH_QUERIES: Record<string, string[]> = {
+  chill: ['chill hindi songs', 'relaxing bollywood'],
+  workout: ['gym workout hindi', 'high energy pump songs'],
+  romance: ['romantic hindi songs 2025', 'love songs bollywood'],
+  party: ['party songs hindi 2025', 'dance hits bollywood'],
+  sad: ['sad hindi songs', 'heartbreak bollywood songs'],
+  focus: ['instrumental focus music', 'study music indian'],
+  devotional: ['morning bhajan', 'aarti devotional hindi'],
+  'road-trip': ['road trip hindi songs', 'driving songs bollywood'],
+  roadtrip: ['road trip hindi songs', 'driving songs bollywood'],
+  rain: ['baarish hindi songs', 'monsoon romantic bollywood'],
+  happy: ['feel good hindi songs', 'upbeat bollywood 2025'],
+  bollywood: ['bollywood hits 2025', 'new hindi songs'],
+  pop: ['hindi pop songs', 'pop hits india'],
+  hiphop: ['hindi rap songs', 'desi hip hop'],
+  classical: ['indian classical music', 'raag hindustani'],
+  lofi: ['lofi hindi songs', 'bollywood lofi remix'],
+  indie: ['indie hindi music', 'indian indie songs'],
+  edm: ['edm hindi remix', 'electronic dance bollywood'],
+  rock: ['hindi rock songs', 'rock music india'],
+  ghazal: ['best ghazals hindi', 'jagjit singh ghazal'],
+  sufi: ['sufi songs hindi', 'sufi music bollywood'],
+  punjabi: ['punjabi hits 2025', 'new punjabi songs'],
 };
 
 export async function getGenreSongs(slug: string): Promise<Song[]> {
@@ -390,6 +419,7 @@ export async function getGenreSongs(slug: string): Promise<Song[]> {
   const songs: Song[] = [];
   const seenIds = new Set<string>();
 
+  // Phase 1: Fetch from curated playlists
   if (playlistIds && playlistIds.length > 0) {
     for (const pid of playlistIds) {
       try {
@@ -407,11 +437,29 @@ export async function getGenreSongs(slug: string): Promise<Song[]> {
     }
   }
 
-  // If no curated playlists or no results, try search then trending fallback
+  // Phase 2: If not enough songs, use targeted search queries
+  if (songs.length < 10) {
+    const queries = GENRE_SEARCH_QUERIES[slug] || [slug];
+    for (const query of queries) {
+      if (songs.length >= 30) break;
+      try {
+        const searched = await searchSongs(query, 1, 20);
+        for (const s of searched) {
+          if (!seenIds.has(s.sourceId || s.id)) {
+            seenIds.add(s.sourceId || s.id);
+            songs.push(s);
+          }
+        }
+      } catch (err) {
+        console.warn(`[JIOSAAVN] Genre search "${query}" failed:`, (err as Error).message);
+      }
+    }
+  }
+
+  // Phase 3: Last resort — generic search on slug name
   if (songs.length === 0) {
     const searched = await searchSongs(slug);
     if (searched.length > 0) return searched;
-    // Final fallback: return hindi trending
     return getTrending('hindi');
   }
 

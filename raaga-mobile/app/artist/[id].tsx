@@ -157,14 +157,72 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
+    paddingHorizontal: spacing.screenPadding,
+    paddingTop: spacing.lg,
   },
   artistImage: {
+    width: 180,
     height: 180,
     backgroundColor: colors.surface,
-    borderRadius: 20,
+    borderRadius: 90,
   },
   artistName: {
-    fontSize: 24,
-    fontWeight: '700',
+    ...typography.h2,
+    color: colors.textPrimary,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+  meta: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.md,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.screenPadding,
+  },
+  playAllButton: {
+    backgroundColor: colors.defaultAccent,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+    borderRadius: spacing.buttonRadiusLarge,
+  },
+  shuffleButton: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+    borderRadius: spacing.buttonRadiusLarge,
+  },
+  actionButtonText: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  songsSection: {
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.screenPadding,
+  },
+  errorCard: {
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  errorText: {
+    ...typography.bodySmall,
+    color: colors.error,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: colors.defaultAccent,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+    borderRadius: spacing.buttonRadiusLarge,
+  },
+  retryText: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    fontWeight: '600',
   },
 });
