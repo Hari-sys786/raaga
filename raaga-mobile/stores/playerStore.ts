@@ -70,7 +70,11 @@ export const usePlayerStore = create<PlayerState>()(
           // Replay same song
           const localPath = getLocalPath(currentSong.id);
           const uri = localPath ?? api.streamUrl(currentSong.id, currentSong.source || 'jiosaavn');
-          playerService.loadAndPlay(uri).catch(console.error);
+          playerService.loadAndPlay(uri, {
+            title: currentSong.title,
+            artist: currentSong.artist,
+            artwork: currentSong.image,
+          }).catch(console.error);
         } else {
           get().next();
         }
@@ -117,7 +121,11 @@ export const usePlayerStore = create<PlayerState>()(
           // Show notification bar
           showNowPlaying(song.title, song.artist, song.image).catch(() => {});
 
-          playerService.loadAndPlay(uri)
+          playerService.loadAndPlay(uri, {
+            title: song.title,
+            artist: song.artist,
+            artwork: song.image,
+          })
             .then(() => {
               set({ isLoading: false });
               // Apply playback speed from settings

@@ -47,7 +47,8 @@
       "expo-router",
       "expo-av",
       "expo-file-system",
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-audio"
     ],
     "extra": {
       "router": {},
