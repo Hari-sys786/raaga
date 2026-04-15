@@ -24,14 +24,17 @@ export function MiniPlayer() {
       exiting={SlideOutDown.duration(200)}
       style={styles.container}
     >
-      {/* Progress bar at the very top */}
+      {/* Amber progress bar — thin, at the very top */}
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${fraction * 100}%` }]} />
       </View>
+
+      {/* Warm charcoal gradient background */}
       <LinearGradient
-        colors={['rgba(17,17,17,0.97)', 'rgba(8,8,8,0.99)']}
+        colors={['rgba(15,21,32,0.97)', 'rgba(8,11,18,0.99)']}
         style={StyleSheet.absoluteFill}
       />
+
       <TouchableOpacity
         style={styles.content}
         onPress={() => router.push('/player')}
@@ -72,8 +75,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   artwork: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 10,
     backgroundColor: colors.surface,
   },
@@ -82,21 +85,25 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   title: {
-    ...typography.bodySmall,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: colors.textPrimary,
+    letterSpacing: 0.1,
   },
   artist: {
     fontSize: 12,
+    fontWeight: '400',
     color: colors.textSecondary,
+    letterSpacing: 0.1,
   },
   progressTrack: {
     height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(6, 182, 212, 0.12)',
     zIndex: 1,
   },
   progressFill: {
     height: 2,
     backgroundColor: colors.defaultAccent,
+    borderRadius: 1,
   },
 });

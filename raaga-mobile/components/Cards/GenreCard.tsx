@@ -1,9 +1,8 @@
 import React from 'react';
-import { Text, StyleSheet, Pressable } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Text, StyleSheet, Pressable, View } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { typography, spacing } from '../../theme';
+import { colors, typography, spacing } from '../../theme';
 
 const GENRE_ICONS: Record<string, { name: string; family: 'ion' | 'mci' }> = {
   bollywood: { name: 'film', family: 'ion' },
@@ -48,20 +47,19 @@ export function GenreCard({ genre, onPress }: GenreCardProps) {
         onPressIn={() => { pressed.value = true; }}
         onPressOut={() => { pressed.value = false; }}
       >
-        <LinearGradient
-          colors={[genre.color + '35', genre.color + '08']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        {iconConfig?.family === 'mci' ? (
-          <MaterialCommunityIcons name={iconConfig.name as any} size={28} color={genre.color} />
-        ) : iconConfig ? (
-          <Ionicons name={iconConfig.name as any} size={28} color={genre.color} />
-        ) : (
-          <Ionicons name="musical-notes" size={28} color={genre.color} />
-        )}
-        <Text style={[styles.name, { color: genre.color }]}>{genre.name}</Text>
+        {/* Accent left border */}
+        <View style={[styles.accentBorder, { backgroundColor: genre.color }]} />
+
+        <View style={styles.inner}>
+          {iconConfig?.family === 'mci' ? (
+            <MaterialCommunityIcons name={iconConfig.name as any} size={18} color={genre.color} />
+          ) : iconConfig ? (
+            <Ionicons name={iconConfig.name as any} size={18} color={genre.color} />
+          ) : (
+            <Ionicons name="musical-notes" size={18} color={genre.color} />
+          )}
+          <Text style={styles.name} numberOfLines={1}>{genre.name}</Text>
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -69,19 +67,31 @@ export function GenreCard({ genre, onPress }: GenreCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    width: 130,
-    height: 100,
+    width: 140,
+    height: 56,
     borderRadius: spacing.cardRadius,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.cardGap,
-    gap: spacing.sm,
-    overflow: 'hidden',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.05)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  accentBorder: {
+    width: 3,
+    alignSelf: 'stretch',
+  },
+  inner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
   },
   name: {
     ...typography.bodySmall,
-    fontWeight: '700',
+    color: colors.textPrimary,
+    fontWeight: '600',
+    flex: 1,
   },
 });

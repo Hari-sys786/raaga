@@ -6,7 +6,6 @@ import {
   View,
   ViewStyle,
   RefreshControl,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme';
@@ -47,7 +46,7 @@ export function Screen({
                 onRefresh={onRefresh}
                 tintColor={colors.defaultAccent}
                 colors={[colors.defaultAccent]}
-                progressBackgroundColor={colors.surface}
+                progressBackgroundColor={colors.surfaceElevated}
               />
             ) : undefined,
         })}

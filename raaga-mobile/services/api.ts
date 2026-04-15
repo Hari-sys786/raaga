@@ -22,16 +22,20 @@ export const api = {
     if (cached) return cached;
 
     const [jsResults, ytResults] = await Promise.allSettled([
-      jiosaavn.searchSongs(q, page, 20),
+      jiosaavn.searchSongs(q, page, 30),
       page === 1 ? ytmusic.searchSongs(q, 10) : Promise.resolve([]),
     ]);
 
-    const songs = [
-      ...(jsResults.status === 'fulfilled' ? jsResults.value : []),
-      ...(ytResults.status === 'fulfilled' ? ytResults.value : []),
-    ];
+    const jsSongs = jsResults.status === 'fulfilled' ? jsResults.value : [];
+    const ytSongs = ytResults.status === 'fulfilled' ? ytResults.value : [];
+    const songs = [...jsSongs, ...ytSongs];
 
-    const result = { results: songs, total: songs.length, query: q };
+    const result = {
+      results: songs,
+      total: songs.length,
+      query: q,
+      hasMore: jsSongs.length >= 15, // if JioSaavn returned a good batch, there's likely more
+    };
     setCached(cacheKey, result, TTL_SEARCH);
     return result;
   },
@@ -43,16 +47,18 @@ export const api = {
     if (cached) return cached;
 
     const [songs, albums, artists] = await Promise.allSettled([
-      jiosaavn.searchSongs(q, 1, 10),
+      jiosaavn.searchSongs(q, 1, 30),
       jiosaavn.searchAlbums(q),
       jiosaavn.searchArtists(q),
     ]);
 
+    const songResults = songs.status === 'fulfilled' ? songs.value : [];
     const result = {
-      results: songs.status === 'fulfilled' ? songs.value : [],
+      results: songResults,
       albums: albums.status === 'fulfilled' ? albums.value : [],
       artists: artists.status === 'fulfilled' ? artists.value : [],
       query: q,
+      hasMore: songResults.length >= 20, // JioSaavn supports pagination if we got a decent batch
     };
 
     setCached(cacheKey, result, TTL_SEARCH);

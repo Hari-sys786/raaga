@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MiniPlayer } from '../../components/Player/MiniPlayer';
 import { colors, typography } from '../../theme';
 
@@ -14,6 +15,7 @@ const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
 };
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.wrapper}>
       <Tabs
@@ -28,10 +30,10 @@ export default function TabLayout() {
             <MiniPlayer />
             <View style={styles.tabBarOuter}>
               <LinearGradient
-                colors={['rgba(5,5,5,0.95)', 'rgba(5,5,5,0.99)']}
+                colors={['rgba(15,21,32,0.95)', 'rgba(8,11,18,0.99)']}
                 style={StyleSheet.absoluteFill}
               />
-              <View style={styles.tabBar}>
+              <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
                 {props.state.routes.map((route, index) => {
                   const { options } = props.descriptors[route.key];
                   const label = options.title ?? route.name;
@@ -55,8 +57,13 @@ export default function TabLayout() {
                         }
                       }}
                     >
-                      {isFocused && <View style={styles.activePill} />}
-                      <Ionicons name={iconName as any} size={26} color={color} />
+                      {/* Amber dot indicator above icon */}
+                      {isFocused ? (
+                        <View style={styles.activeDot} />
+                      ) : (
+                        <View style={styles.dotPlaceholder} />
+                      )}
+                      <Ionicons name={iconName as any} size={24} color={color} />
                       <Text style={[styles.tabLabel, { color }]}>
                         {label}
                       </Text>
@@ -84,15 +91,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   tabBarOuter: {
-    borderTopColor: 'rgba(255, 255, 255, 0.04)',
+    borderTopColor: 'rgba(232,236,242,0.04)',
     borderTopWidth: 0.5,
     overflow: 'hidden',
   },
   tabBar: {
-    height: 64,
     flexDirection: 'row',
-    paddingTop: 6,
-    paddingBottom: 10,
+    paddingTop: 4,
+    minHeight: 56,
   },
   tabItem: {
     flex: 1,
@@ -100,13 +106,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
   },
-  activePill: {
-    position: 'absolute',
-    top: 0,
-    width: 32,
-    height: 3,
+  activeDot: {
+    width: 4,
+    height: 4,
     borderRadius: 2,
     backgroundColor: colors.defaultAccent,
+    marginBottom: 2,
+  },
+  dotPlaceholder: {
+    width: 4,
+    height: 4,
+    marginBottom: 2,
   },
   tabLabel: {
     ...typography.tabLabel,

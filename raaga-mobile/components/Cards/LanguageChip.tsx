@@ -1,6 +1,5 @@
 import React from 'react';
-import { Text, StyleSheet, Pressable, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Text, StyleSheet, Pressable } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { colors, typography, spacing } from '../../theme';
 
@@ -30,14 +29,7 @@ export function LanguageChip({ language, onPress }: LanguageChipProps) {
         onPressIn={() => { pressed.value = true; }}
         onPressOut={() => { pressed.value = false; }}
       >
-        <LinearGradient
-          colors={['rgba(139,92,246,0.15)', 'rgba(139,92,246,0.05)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
         <Text style={styles.script}>{language.script}</Text>
-        <View style={styles.divider} />
         <Text style={styles.name}>{language.name}</Text>
       </Pressable>
     </Animated.View>
@@ -46,31 +38,26 @@ export function LanguageChip({ language, onPress }: LanguageChipProps) {
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: spacing.buttonRadiusLarge,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: spacing.cardRadius,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(139,92,246,0.2)',
+    borderColor: 'rgba(6, 182, 212, 0.25)',
     marginRight: spacing.md,
-    gap: spacing.sm,
-    overflow: 'hidden',
+    minWidth: 64,
+    gap: 2,
   },
   script: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.defaultAccent,
     fontWeight: '700',
-  },
-  divider: {
-    width: 1,
-    height: 18,
-    backgroundColor: colors.textTertiary,
-    opacity: 0.3,
+    lineHeight: 22,
   },
   name: {
-    ...typography.bodySmall,
+    ...typography.caption,
     color: colors.textSecondary,
     fontWeight: '500',
   },

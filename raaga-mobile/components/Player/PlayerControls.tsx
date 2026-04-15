@@ -8,6 +8,10 @@ interface PlayerControlsProps {
   size?: 'mini' | 'full';
 }
 
+// Warm muted gray for inactive controls
+const INACTIVE_COLOR = '#5C5650';
+const INACTIVE_OPACITY = 0.6;
+
 export function PlayerControls({ size = 'full' }: PlayerControlsProps) {
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const shuffle = usePlayerStore((s) => s.shuffle);
@@ -29,14 +33,22 @@ export function PlayerControls({ size = 'full' }: PlayerControlsProps) {
           style={styles.miniButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color={colors.textPrimary} />
+          <Ionicons
+            name={isPlaying ? 'pause' : 'play'}
+            size={20}
+            color={colors.textPrimary}
+          />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={next}
           style={styles.miniButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="play-skip-forward" size={18} color={colors.textPrimary} />
+          <Ionicons
+            name="play-skip-forward"
+            size={18}
+            color={colors.textPrimary}
+          />
         </TouchableOpacity>
       </View>
     );
@@ -49,17 +61,21 @@ export function PlayerControls({ size = 'full' }: PlayerControlsProps) {
         <Ionicons
           name="shuffle"
           size={22}
-          color={shuffle ? colors.defaultAccent : colors.textSecondary}
-          style={{ opacity: shuffle ? 1 : 0.5 }}
+          color={shuffle ? colors.defaultAccent : INACTIVE_COLOR}
+          style={{ opacity: shuffle ? 1 : INACTIVE_OPACITY }}
         />
       </TouchableOpacity>
 
       {/* Previous */}
       <TouchableOpacity onPress={previous} style={styles.controlButton}>
-        <Ionicons name="play-skip-back" size={28} color={colors.textPrimary} />
+        <Ionicons
+          name="play-skip-back"
+          size={26}
+          color={colors.textPrimary}
+        />
       </TouchableOpacity>
 
-      {/* Play/Pause - Large central button */}
+      {/* Play/Pause */}
       <TouchableOpacity
         onPress={isPlaying ? pause : resume}
         style={styles.playPauseButton}
@@ -67,7 +83,7 @@ export function PlayerControls({ size = 'full' }: PlayerControlsProps) {
       >
         <Ionicons
           name={isPlaying ? 'pause' : 'play'}
-          size={30}
+          size={28}
           color="#FFFFFF"
           style={!isPlaying ? { marginLeft: 3 } : undefined}
         />
@@ -75,7 +91,11 @@ export function PlayerControls({ size = 'full' }: PlayerControlsProps) {
 
       {/* Next */}
       <TouchableOpacity onPress={next} style={styles.controlButton}>
-        <Ionicons name="play-skip-forward" size={28} color={colors.textPrimary} />
+        <Ionicons
+          name="play-skip-forward"
+          size={26}
+          color={colors.textPrimary}
+        />
       </TouchableOpacity>
 
       {/* Repeat */}
@@ -83,8 +103,8 @@ export function PlayerControls({ size = 'full' }: PlayerControlsProps) {
         <Ionicons
           name={repeat === 'one' ? 'repeat' : 'repeat-outline'}
           size={22}
-          color={repeatActive ? colors.defaultAccent : colors.textSecondary}
-          style={{ opacity: repeatActive ? 1 : 0.5 }}
+          color={repeatActive ? colors.defaultAccent : INACTIVE_COLOR}
+          style={{ opacity: repeatActive ? 1 : INACTIVE_OPACITY }}
         />
       </TouchableOpacity>
     </View>
@@ -96,7 +116,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 24,
+    gap: 22,
     paddingVertical: 8,
   },
   miniContainer: {
@@ -123,16 +143,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   playPauseButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: colors.defaultAccent,
     alignItems: 'center',
     justifyContent: 'center',
+    // Warm amber glow
     shadowColor: colors.defaultAccent,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 10,
   },
 });

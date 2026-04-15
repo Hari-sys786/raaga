@@ -76,7 +76,7 @@ function EqualizerBar({ delay: barDelay }: { delay: number }) {
   );
 }
 
-export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = true }: SongCardProps) {
+export const SongCard = React.memo(function SongCard({ song, onPress, onLongPress, showDownloadIndicator = true }: SongCardProps) {
   const isDownloaded = useDownloadStore((s) => s.isDownloaded(song.id));
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
@@ -132,13 +132,13 @@ export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = t
         onPressIn={() => { pressed.value = true; }}
         onPressOut={() => { pressed.value = false; }}
       >
+        {/* Amber left border for active song */}
+        {isCurrentSong && <View style={styles.activeBorder} />}
+
         <View style={styles.artWrapper}>
           <Image
             source={{ uri: song.image }}
-            style={[
-              styles.artwork,
-              isCurrentSong && { borderColor: colors.defaultAccent, borderWidth: 2 },
-            ]}
+            style={styles.artwork}
             contentFit="cover"
             placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
             transition={200}
@@ -156,6 +156,7 @@ export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = t
             </View>
           )}
         </View>
+
         <View style={styles.info}>
           <Text
             style={[styles.title, isCurrentSong && { color: colors.defaultAccent }]}
@@ -167,9 +168,11 @@ export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = t
             {song.artist}
           </Text>
         </View>
+
         {song.duration ? (
           <Text style={styles.duration}>{formatDuration(song.duration)}</Text>
         ) : null}
+
         <TouchableOpacity
           style={styles.menuIcon}
           onPress={() => setMenuVisible(true)}
@@ -212,7 +215,7 @@ export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = t
               <Ionicons
                 name={isFavorite ? 'heart' : 'heart-outline'}
                 size={22}
-                color={isFavorite ? '#FF6B6B' : colors.textSecondary}
+                color={isFavorite ? colors.accentSecondary : colors.textSecondary}
               />
               <Text style={styles.menuItemText}>
                 {isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
@@ -242,7 +245,7 @@ export function SongCard({ song, onPress, onLongPress, showDownloadIndicator = t
       </Modal>
     </Animated.View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -253,16 +256,24 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   activeContainer: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 12,
+    // No background change — left border handles active state
+  },
+  activeBorder: {
+    position: 'absolute',
+    left: 0,
+    top: 6,
+    bottom: 6,
+    width: 3,
+    borderRadius: 2,
+    backgroundColor: colors.defaultAccent,
   },
   artWrapper: {
     position: 'relative',
   },
   artwork: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 10,
     backgroundColor: colors.surface,
   },
   equalizerOverlay: {
@@ -293,11 +304,13 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.body,
+    fontSize: 15,
     color: colors.textPrimary,
     fontWeight: '500',
   },
   artist: {
     ...typography.caption,
+    fontSize: 12,
     color: colors.textSecondary,
   },
   duration: {
@@ -310,14 +323,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Context menu styles
+  // Context menu
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'flex-end',
   },
   menuContainer: {
-    backgroundColor: colors.surface,
+    backgroundColor: '#0F1520',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 34,
@@ -351,7 +364,7 @@ const styles = StyleSheet.create({
   },
   menuDivider: {
     height: 0.5,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(232,236,242,0.06)',
     marginHorizontal: 20,
     marginVertical: 4,
   },
@@ -370,7 +383,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 8,
     borderTopWidth: 0.5,
-    borderTopColor: 'rgba(255,255,255,0.08)',
+    borderTopColor: 'rgba(232,236,242,0.06)',
     paddingTop: 16,
   },
   menuCancelText: {

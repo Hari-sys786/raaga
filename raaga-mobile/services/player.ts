@@ -38,7 +38,17 @@ class PlayerService {
   };
 
   async loadAndPlay(uri: string, metadata?: { title?: string; artist?: string; artwork?: string }): Promise<void> {
-    if (this.isLoading) return;
+    // Always stop current playback first — never skip due to isLoading
+    // This ensures next/previous always works even if previous load is in-flight
+    if (this.player) {
+      try {
+        this.player.pause();
+        this.player.remove();
+      } catch {
+        // ignore cleanup errors
+      }
+      this.player = null;
+    }
     this.isLoading = true;
 
     try {
@@ -48,12 +58,6 @@ class PlayerService {
         shouldPlayInBackground: true,
         interruptionMode: 'doNotMix',
       });
-
-      // Clean up previous player
-      if (this.player) {
-        this.player.remove();
-        this.player = null;
-      }
 
       // Create new player
       this.player = createAudioPlayer({ uri }, { updateInterval: 500 });

@@ -198,8 +198,8 @@ export async function searchSongs(query: string, page = 1, limit = 30): Promise<
     console.warn('[JIOSAAVN] Direct search failed:', (err as Error).message);
   }
 
-  // Try fallback API (only page 1)
-  if (page === 1) {
+  // Try fallback API
+  {
     try {
       const fbUrl = `${SEARCH_FALLBACK_URL}/search/songs?query=${encodeURIComponent(query)}&limit=${Math.min(limit, 30)}&page=${page}`;
       const res = await fetchWithTimeout(fbUrl, {}, 10000);

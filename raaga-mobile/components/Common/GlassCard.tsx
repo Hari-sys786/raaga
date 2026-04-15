@@ -1,7 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { spacing } from '../../theme';
+import { View, ViewStyle, StyleSheet } from 'react-native';
+import { colors, spacing } from '../../theme';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -10,25 +9,19 @@ interface GlassCardProps {
 
 export function GlassCard({ children, style }: GlassCardProps) {
   return (
-    <View style={[styles.card, style]}>
-      <LinearGradient
-        colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+    <View style={[styles.container, style]}>
       {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+  container: {
     borderRadius: spacing.cardRadius,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    padding: spacing.cardPadding,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(6, 182, 212, 0.12)',
+    backgroundColor: colors.surfaceElevated,
+    padding: spacing.cardPadding,
   },
 });

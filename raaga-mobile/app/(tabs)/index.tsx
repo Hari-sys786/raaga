@@ -8,9 +8,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../components/Common/Screen';
 import { GlassCard } from '../../components/Common/GlassCard';
 import { GenreCard } from '../../components/Cards/GenreCard';
@@ -19,6 +20,7 @@ import { LanguageChip } from '../../components/Cards/LanguageChip';
 import { colors, typography, spacing } from '../../theme';
 import { api } from '../../services/api';
 import { usePlayerStore } from '../../stores/playerStore';
+import { useLibraryStore } from '../../stores/libraryStore';
 import { Song } from '../../types';
 
 const genres = [
@@ -69,15 +71,28 @@ function getGreeting(): string {
   return 'Good Evening';
 }
 
-// Quick play card for trending preview (horizontal)
-function QuickPlayCard({ song, onPress }: { song: Song; onPress: () => void }) {
+// ── QuickPlayCard ────────────────────────────────────────────────────────────
+// First card is large (160×160), rest are small (120×120)
+function QuickPlayCard({
+  song,
+  onPress,
+  large = false,
+}: {
+  song: Song;
+  onPress: () => void;
+  large?: boolean;
+}) {
+  const size = large ? 160 : 120;
   return (
-    <TouchableOpacity style={quickStyles.card} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={[quickStyles.card, { width: size, marginRight: large ? 16 : 10 }]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
       <Image
         source={{ uri: song.image }}
-        style={quickStyles.art}
+        style={[quickStyles.art, { width: size, height: size }]}
         contentFit="cover"
-        placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
         transition={200}
       />
       <Text style={quickStyles.title} numberOfLines={1}>{song.title}</Text>
@@ -88,14 +103,11 @@ function QuickPlayCard({ song, onPress }: { song: Song; onPress: () => void }) {
 
 const quickStyles = StyleSheet.create({
   card: {
-    width: 130,
-    marginRight: 12,
+    flexShrink: 0,
   },
   art: {
-    width: 130,
-    height: 130,
-    borderRadius: 14,
-    backgroundColor: colors.surface,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceElevated,
     marginBottom: 8,
   },
   title: {
@@ -105,11 +117,40 @@ const quickStyles = StyleSheet.create({
   },
   artist: {
     ...typography.caption,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
 });
 
+// ── GenreGrid ────────────────────────────────────────────────────────────────
+// 2-column wrap grid instead of horizontal scroll
+function GenreGrid({ onPress }: { onPress: (slug: string) => void }) {
+  return (
+    <View style={gridStyles.grid}>
+      {genres.map((genre) => (
+        <View key={genre.slug} style={gridStyles.cell}>
+          <GenreCard genre={genre} onPress={() => onPress(genre.slug)} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const gridStyles = StyleSheet.create({
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.screenPadding,
+    gap: spacing.sm,
+  },
+  cell: {
+    // Each cell is half the available width minus half the gap
+    // (screenPadding×2 = 44 total, gap = 8)
+    width: '47.5%',
+  },
+});
+
+// ── HomeScreen ───────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const router = useRouter();
   const [trending, setTrending] = useState<Song[]>([]);
@@ -118,6 +159,8 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const play = usePlayerStore((s) => s.play);
   const setQueue = usePlayerStore((s) => s.setQueue);
+  const favorites = useLibraryStore((s) => s.favorites);
+  const recentlyPlayed = useLibraryStore((s) => s.recentlyPlayed);
 
   const fetchTrending = useCallback(async () => {
     try {
@@ -156,21 +199,83 @@ export default function HomeScreen() {
     [play, setQueue, trending]
   );
 
+  const handlePlayMyMix = useCallback(() => {
+    // Build a mix: favorites first, then recent, then trending — deduplicated & shuffled
+    const seen = new Set<string>();
+    const mix: Song[] = [];
+    const addUnique = (songs: Song[]) => {
+      for (const s of songs) {
+        if (!seen.has(s.id)) {
+          seen.add(s.id);
+          mix.push(s);
+        }
+      }
+    };
+    addUnique(favorites);
+    addUnique(recentlyPlayed);
+    addUnique(trending.slice(0, 20));
+    // Fisher-Yates shuffle
+    for (let i = mix.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [mix[i], mix[j]] = [mix[j], mix[i]];
+    }
+    if (mix.length > 0) {
+      setQueue(mix);
+      play(mix[0]);
+    }
+  }, [favorites, recentlyPlayed, trending, play, setQueue]);
+
+  const hasMixContent = favorites.length > 0 || recentlyPlayed.length > 0;
+  const trendingSongs = trending.slice(0, 10);
+
   return (
     <Screen scroll refreshing={refreshing} onRefresh={handleRefresh}>
-      {/* Hero Header */}
+
+      {/* ── Hero Header ── */}
       <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
         <Text style={styles.greeting}>{getGreeting()}</Text>
-        <View style={styles.logoRow}>
+        <View style={styles.logoBlock}>
           <Text style={styles.logo}>राग</Text>
           <Text style={styles.logoSub}>Raaga</Text>
         </View>
       </Animated.View>
 
-      {/* Trending Preview — horizontal album art cards */}
+      {/* ── Play My Mix ── */}
+      {(hasMixContent || trending.length > 0) && (
+        <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.section}>
+          <TouchableOpacity
+            style={styles.mixCard}
+            onPress={handlePlayMyMix}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['rgba(6,182,212,0.18)', 'rgba(6,182,212,0.04)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.mixIconWrap}>
+              <Ionicons name="sparkles" size={22} color={colors.defaultAccent} />
+            </View>
+            <View style={styles.mixTextBlock}>
+              <Text style={styles.mixTitle}>Play My Mix</Text>
+              <Text style={styles.mixSub}>
+                {hasMixContent
+                  ? `${favorites.length} favorites · ${recentlyPlayed.length} recent`
+                  : 'Shuffled from trending hits'}
+              </Text>
+            </View>
+            <View style={styles.mixPlayBtn}>
+              <Ionicons name="play" size={20} color="#fff" />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      {/* ── Trending Now ── */}
       <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Trending Now 🔥</Text>
+          <Text style={styles.sectionTitle}>TRENDING NOW</Text>
           <TouchableOpacity onPress={() => router.push('/trending')}>
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
@@ -187,16 +292,20 @@ export default function HomeScreen() {
               <Text style={styles.retryText}>Retry</Text>
             </TouchableOpacity>
           </GlassCard>
-        ) : trending.length === 0 ? (
-          <GlassCard>
+        ) : trendingSongs.length === 0 ? (
+          <GlassCard style={{ marginHorizontal: spacing.screenPadding }}>
             <Text style={styles.emptyText}>No trending songs found</Text>
           </GlassCard>
         ) : (
           <FlatList
-            data={trending.slice(0, 10)}
+            data={trendingSongs}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <QuickPlayCard song={item} onPress={() => handleSongPress(item)} />
+            renderItem={({ item, index }) => (
+              <QuickPlayCard
+                song={item}
+                onPress={() => handleSongPress(item)}
+                large={index === 0}
+              />
             )}
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -205,51 +314,42 @@ export default function HomeScreen() {
         )}
       </Animated.View>
 
-      {/* Browse by Genre */}
+      {/* ── Browse by Genre — 2-col grid ── */}
       <Animated.View entering={FadeInDown.delay(200).duration(500)} style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Browse by Genre</Text>
+          <Text style={styles.sectionTitle}>GENRES</Text>
         </View>
-        <FlatList
-          data={genres}
-          keyExtractor={(item) => item.slug}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.browseList}
-          renderItem={({ item }) => (
-            <GenreCard genre={item} onPress={() => router.push(`/genre/${item.slug}`)} />
-          )}
-        />
+        <GenreGrid onPress={(slug) => router.push(`/genre/${slug}`)} />
       </Animated.View>
 
-      {/* Browse by Mood */}
+      {/* ── Browse by Mood ── */}
       <Animated.View entering={FadeInDown.delay(300).duration(500)} style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Browse by Mood</Text>
+          <Text style={styles.sectionTitle}>MOODS</Text>
         </View>
         <FlatList
           data={moods}
           keyExtractor={(item) => item.slug}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.browseList}
+          contentContainerStyle={styles.horizontalList}
           renderItem={({ item }) => (
             <MoodCard mood={item} onPress={() => router.push(`/mood/${item.slug}`)} />
           )}
         />
       </Animated.View>
 
-      {/* Browse by Language */}
+      {/* ── Browse by Language ── */}
       <Animated.View entering={FadeInDown.delay(400).duration(500)} style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Browse by Language</Text>
+          <Text style={styles.sectionTitle}>LANGUAGES</Text>
         </View>
         <FlatList
           data={languages}
           keyExtractor={(item) => item.slug}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.browseList}
+          contentContainerStyle={styles.horizontalList}
           renderItem={({ item }) => (
             <LanguageChip language={item} onPress={() => router.push(`/genre/${item.slug}`)} />
           )}
@@ -262,35 +362,44 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  // ── Header ──
   header: {
     paddingHorizontal: spacing.screenPadding,
     paddingTop: spacing.xxl + 8,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   greeting: {
     ...typography.bodySmall,
-    color: colors.textSecondary,
-    marginBottom: 4,
+    color: colors.textTertiary,
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    fontSize: 11,
+    fontWeight: '600',
   },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing.sm,
+  logoBlock: {
+    marginTop: 2,
   },
   logo: {
-    fontSize: 38,
+    fontSize: 44,
     fontWeight: '800',
     color: colors.defaultAccent,
-    letterSpacing: -1,
-    textShadowColor: 'rgba(139, 92, 246, 0.4)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 16,
+    letterSpacing: -1.5,
+    lineHeight: 50,
+    textShadowColor: 'rgba(6, 182, 212, 0.35)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 12,
   },
   logoSub: {
-    ...typography.h3,
-    color: colors.textTertiary,
+    fontSize: 15,
     fontWeight: '300',
+    color: colors.textTertiary,
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+    marginTop: 2,
   },
+
+  // ── Section ──
   section: {
     marginBottom: spacing.sectionGap,
   },
@@ -302,14 +411,19 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   sectionTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   seeAll: {
     ...typography.bodySmall,
     color: colors.defaultAccent,
     fontWeight: '600',
   },
+
+  // ── States ──
   loadingContainer: {
     height: 120,
     justifyContent: 'center',
@@ -333,8 +447,8 @@ const styles = StyleSheet.create({
   },
   retryText: {
     ...typography.bodySmall,
-    color: colors.textPrimary,
-    fontWeight: '600',
+    color: colors.background,
+    fontWeight: '700',
   },
   emptyText: {
     ...typography.body,
@@ -345,7 +459,47 @@ const styles = StyleSheet.create({
     paddingLeft: spacing.screenPadding,
     paddingRight: spacing.lg,
   },
-  browseList: {
-    paddingHorizontal: spacing.screenPadding,
+
+  // ── Mix Card ──
+  mixCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.screenPadding,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(6,182,212,0.15)',
+    overflow: 'hidden',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  mixIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(6,182,212,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mixTextBlock: {
+    flex: 1,
+    gap: 2,
+  },
+  mixTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  mixSub: {
+    fontSize: 12,
+    color: colors.textTertiary,
+  },
+  mixPlayBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.defaultAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

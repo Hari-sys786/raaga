@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Modal,
+  Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +21,7 @@ import { Queue } from './Queue';
 import { colors, typography, spacing } from '../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ART_SIZE = Math.min(SCREEN_WIDTH - 80, 280);
+const ART_SIZE = SCREEN_WIDTH - 64;
 
 interface FullPlayerProps {
   visible: boolean;
@@ -44,7 +45,9 @@ export function FullPlayer({ visible, onClose }: FullPlayerProps) {
   const currentDownloadItem = currentSong
     ? downloadQueue.find((q) => q.song.id === currentSong.id)
     : null;
-  const isDownloading = currentDownloadItem?.status === 'downloading' || currentDownloadItem?.status === 'pending';
+  const isDownloading =
+    currentDownloadItem?.status === 'downloading' ||
+    currentDownloadItem?.status === 'pending';
   const downloadProgress = currentDownloadItem?.progress ?? 0;
 
   // Favorites state
@@ -86,6 +89,15 @@ export function FullPlayer({ visible, onClose }: FullPlayerProps) {
     toggleFavorite(currentSong);
   };
 
+  const handleShare = async () => {
+    if (!currentSong) return;
+    try {
+      await Share.share({
+        message: `${currentSong.title} — ${currentSong.artist}`,
+      });
+    } catch {}
+  };
+
   if (!currentSong) return null;
 
   return (
@@ -99,10 +111,17 @@ export function FullPlayer({ visible, onClose }: FullPlayerProps) {
         {showQueue ? (
           <>
             <View style={styles.topBar}>
-              <TouchableOpacity onPress={() => setShowQueue(false)} style={styles.topButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+              <TouchableOpacity
+                onPress={() => setShowQueue(false)}
+                style={styles.topButton}
+              >
+                <Ionicons
+                  name="arrow-back"
+                  size={22}
+                  color={colors.textSecondary}
+                />
               </TouchableOpacity>
-              <Text style={styles.topTitle}>Queue</Text>
+              <Text style={styles.queueTitle}>Queue</Text>
               <View style={styles.topButton} />
             </View>
             <Queue onClose={() => setShowQueue(false)} />
@@ -112,21 +131,36 @@ export function FullPlayer({ visible, onClose }: FullPlayerProps) {
             {/* Top Bar */}
             <View style={styles.topBar}>
               <TouchableOpacity onPress={onClose} style={styles.topButton}>
-                <Ionicons name="chevron-down" size={28} color={colors.textPrimary} />
+                <Ionicons
+                  name="chevron-down"
+                  size={26}
+                  color={colors.textSecondary}
+                />
               </TouchableOpacity>
+
               <View style={styles.topCenter}>
-                <Text style={styles.topTitle} numberOfLines={1}>
-                  Now Playing
-                </Text>
+                <Text style={styles.nowPlayingLabel}>NOW PLAYING</Text>
                 {sleepRemaining && (
                   <View style={styles.sleepRow}>
-                    <Ionicons name="timer-outline" size={12} color={colors.defaultAccent} />
+                    <Ionicons
+                      name="timer-outline"
+                      size={11}
+                      color={colors.defaultAccent}
+                    />
                     <Text style={styles.sleepTimer}>{sleepRemaining}</Text>
                   </View>
                 )}
               </View>
-              <TouchableOpacity onPress={() => setShowQueue(true)} style={styles.topButton}>
-                <Ionicons name="list" size={24} color={colors.textPrimary} />
+
+              <TouchableOpacity
+                onPress={() => setShowQueue(true)}
+                style={styles.topButton}
+              >
+                <Ionicons
+                  name="list"
+                  size={22}
+                  color={colors.textSecondary}
+                />
               </TouchableOpacity>
             </View>
 
@@ -168,35 +202,65 @@ export function FullPlayer({ visible, onClose }: FullPlayerProps) {
 
             {/* Actions Row */}
             <View style={styles.actionsRow}>
-              <TouchableOpacity style={styles.actionButton} onPress={handleFavorite}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleFavorite}
+              >
                 <Ionicons
                   name={isFavorite ? 'heart' : 'heart-outline'}
-                  size={24}
-                  color={isFavorite ? '#FF6B6B' : colors.textSecondary}
-                  style={{ opacity: isFavorite ? 1 : 0.5 }}
+                  size={23}
+                  color={
+                    isFavorite ? colors.accentSecondary : colors.textTertiary
+                  }
+                  style={{ opacity: isFavorite ? 1 : 0.7 }}
                 />
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={handleDownload}
                 disabled={isDownloaded}
               >
                 {isDownloaded ? (
-                  <Ionicons name="checkmark-circle" size={24} color={colors.success} style={{ opacity: 0.8 }} />
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={23}
+                    color={colors.success}
+                    style={{ opacity: 0.8 }}
+                  />
                 ) : isDownloading ? (
-                  <Text style={styles.downloadPercent}>{Math.round(downloadProgress * 100)}%</Text>
+                  <Text style={styles.downloadPercent}>
+                    {Math.round(downloadProgress * 100)}%
+                  </Text>
                 ) : (
-                  <Ionicons name="download-outline" size={24} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                  <Ionicons
+                    name="download-outline"
+                    size={23}
+                    color={colors.textTertiary}
+                    style={{ opacity: 0.7 }}
+                  />
                 )}
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="document-text-outline" size={24} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+
+              <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+                <Ionicons
+                  name="share-outline"
+                  size={23}
+                  color={colors.textTertiary}
+                  style={{ opacity: 0.7 }}
+                />
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => setShowQueue(true)}
               >
-                <Ionicons name="list" size={24} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                <Ionicons
+                  name="list"
+                  size={23}
+                  color={colors.textTertiary}
+                  style={{ opacity: 0.7 }}
+                />
               </TouchableOpacity>
             </View>
           </>
@@ -209,15 +273,15 @@ export function FullPlayer({ visible, onClose }: FullPlayerProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#080B12',
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: 54,
-    paddingBottom: 12,
+    paddingTop: 52,
+    paddingBottom: 10,
   },
   topButton: {
     width: 40,
@@ -228,59 +292,67 @@ const styles = StyleSheet.create({
   topCenter: {
     flex: 1,
     alignItems: 'center',
+    gap: 3,
   },
-  topTitle: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
+  nowPlayingLabel: {
+    fontSize: 11,
     fontWeight: '600',
+    letterSpacing: 1.5,
+    color: colors.textTertiary,
     textAlign: 'center',
   },
   sleepRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 2,
   },
   sleepTimer: {
-    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '600',
     color: colors.defaultAccent,
+    letterSpacing: 0.5,
   },
   artContainer: {
     alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 32,
-  },
-  artwork: {
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
-    elevation: 10,
-  },
-  songInfo: {
-    paddingHorizontal: spacing.screenPadding + 8,
+    marginTop: 14,
     marginBottom: 24,
   },
+  artwork: {
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 28,
+    elevation: 12,
+  },
+  songInfo: {
+    paddingHorizontal: spacing.screenPadding + 4,
+    marginBottom: 20,
+    gap: 4,
+  },
   songTitle: {
-    ...typography.playerTitle,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
     color: colors.textPrimary,
-    marginBottom: 4,
   },
   songArtist: {
-    ...typography.playerArtist,
-    color: '#A0A0A0',
+    fontSize: 15,
+    fontWeight: '300',
+    letterSpacing: 0.5,
+    color: colors.textSecondary,
   },
   progressContainer: {
-    paddingHorizontal: spacing.screenPadding + 8,
-    marginBottom: 16,
+    paddingHorizontal: spacing.screenPadding + 4,
+    marginBottom: 12,
   },
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 40,
-    paddingTop: 24,
+    gap: 36,
+    paddingTop: 20,
+    paddingBottom: 8,
   },
   actionButton: {
     width: 44,
@@ -288,9 +360,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  queueTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.2,
+  },
   downloadPercent: {
-    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '700',
     color: colors.defaultAccent,
-    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });

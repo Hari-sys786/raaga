@@ -51,6 +51,7 @@ export function ProgressBar({
         onLayout={handleLayout}
         style={[styles.trackContainer, { paddingVertical: thumbSize / 2 }]}
       >
+        {/* Track */}
         <View style={[styles.track, { height }]}>
           <View
             style={[
@@ -59,7 +60,8 @@ export function ProgressBar({
             ]}
           />
         </View>
-        {/* Thumb with glow */}
+
+        {/* Thumb with warm amber glow */}
         {duration > 0 && (
           <View
             style={[
@@ -72,16 +74,18 @@ export function ProgressBar({
                 marginLeft: -(thumbSize / 2),
                 top: 0,
                 bottom: 0,
+                // Warm amber shadow glow
                 shadowColor: colors.defaultAccent,
                 shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.6,
-                shadowRadius: 6,
-                elevation: 4,
+                shadowOpacity: 0.65,
+                shadowRadius: 7,
+                elevation: 5,
               },
             ]}
           />
         )}
       </Pressable>
+
       {showLabels && (
         <View style={styles.labels}>
           <Text style={styles.label}>{formatTime(progress)}</Text>
@@ -103,7 +107,8 @@ const styles = StyleSheet.create({
   },
   track: {
     width: '100%',
-    backgroundColor: '#333333',
+    // Warm dark gray — not pure black
+    backgroundColor: '#2A2728',
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -123,6 +128,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    color: '#A0A0A0',
+    fontWeight: '400',
+    letterSpacing: 0.2,
+    color: colors.textSecondary,
   },
 });
