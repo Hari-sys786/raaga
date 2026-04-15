@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import axios from 'axios';
 import * as jiosaavn from '../sources/jiosaavn';
 import * as piped from '../sources/piped';
+import * as ytmusic from '../sources/ytmusic';
 
 const router = Router();
 
@@ -68,7 +69,14 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
 
     if (source === 'youtube') {
       const youtubeId = id.startsWith('youtube-') ? id.slice(8) : id;
-      const result = await piped.getStreamUrl(youtubeId);
+
+      // Try yt-dlp first (most reliable), then Piped as fallback
+      let result = await ytmusic.getStreamUrl(youtubeId);
+      if (!result?.url) {
+        console.log('[STREAM] yt-dlp failed, trying Piped fallback...');
+        result = await piped.getStreamUrl(youtubeId).catch(() => null);
+      }
+
       if (!result?.url) {
         res.status(404).json({ error: 'Stream not found' });
         return;

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import * as jiosaavn from '../sources/jiosaavn';
 import * as piped from '../sources/piped';
+import * as ytmusic from '../sources/ytmusic';
 import { getCached, setCached, cacheKey } from '../cache';
 import { Song } from '../types';
 
@@ -37,10 +38,10 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       console.warn('[VIRAL] JioSaavn trending failed:', (err as Error).message);
     }
 
-    // Fetch from Piped trending
+    // Fetch from YouTube Music trending (primary), Piped as fallback
     try {
-      const pipedSongs = await piped.getTrending();
-      for (const song of pipedSongs) {
+      const ytSongs = await ytmusic.getTrending(20);
+      for (const song of ytSongs) {
         const key = song.title.toLowerCase();
         if (!seenTitles.has(key)) {
           seenTitles.add(key);
@@ -48,7 +49,20 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
         }
       }
     } catch (err) {
-      console.warn('[VIRAL] Piped trending failed:', (err as Error).message);
+      console.warn('[VIRAL] YTMusic trending failed:', (err as Error).message);
+      // Fallback to Piped
+      try {
+        const pipedSongs = await piped.getTrending();
+        for (const song of pipedSongs) {
+          const key = song.title.toLowerCase();
+          if (!seenTitles.has(key)) {
+            seenTitles.add(key);
+            results.push(song);
+          }
+        }
+      } catch (err2) {
+        console.warn('[VIRAL] Piped fallback also failed:', (err2 as Error).message);
+      }
     }
 
     setCached(key, results, VIRAL_TTL);

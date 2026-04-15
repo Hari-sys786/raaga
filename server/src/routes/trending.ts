@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import * as jiosaavn from '../sources/jiosaavn';
+import * as ytmusic from '../sources/ytmusic';
 import { getCached, setCached, cacheKey } from '../cache';
 import { Song } from '../types';
 
@@ -21,7 +22,32 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const songs = await jiosaavn.getTrending(lang);
+    // Fetch from both JioSaavn and Piped (YouTube) in parallel
+    const [saavnSongs, pipedSongs] = await Promise.allSettled([
+      jiosaavn.getTrending(lang),
+      ytmusic.getTrending(20),
+    ]);
+
+    const songs: Song[] = [];
+    const seenTitles = new Set<string>();
+
+    // JioSaavn first (primary)
+    if (saavnSongs.status === 'fulfilled') {
+      for (const s of saavnSongs.value) {
+        seenTitles.add(s.title.toLowerCase());
+        songs.push(s);
+      }
+    }
+
+    // Mix in YouTube trending (deduplicated)
+    if (pipedSongs.status === 'fulfilled') {
+      for (const s of pipedSongs.value) {
+        if (!seenTitles.has(s.title.toLowerCase())) {
+          seenTitles.add(s.title.toLowerCase());
+          songs.push(s);
+        }
+      }
+    }
 
     setCached(key, songs, TRENDING_TTL);
     res.json({ data: songs, total: songs.length, cached: false });

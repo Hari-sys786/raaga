@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import * as jiosaavn from '../sources/jiosaavn';
 import * as piped from '../sources/piped';
+import * as ytmusic from '../sources/ytmusic';
 import { getCached, setCached, cacheKey } from '../cache';
 import { Song } from '../types';
 
@@ -49,15 +50,15 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
         jiosaavn.searchArtists(query),
       ]);
 
-      // Also search Piped if songs are few
+      // Also search YouTube Music if JioSaavn results are few
       let mergedSongs = songs;
       if (songs.length < 5) {
         try {
-          const pipedResults = await piped.searchSongs(query);
+          const ytResults = await ytmusic.searchSongs(query, 15);
           const existingTitles = new Set(songs.map(r => r.title.toLowerCase()));
-          for (const pr of pipedResults) {
-            if (!existingTitles.has(pr.title.toLowerCase())) {
-              mergedSongs.push(pr);
+          for (const yt of ytResults) {
+            if (!existingTitles.has(yt.title.toLowerCase())) {
+              mergedSongs.push(yt);
             }
           }
         } catch {}
@@ -83,18 +84,18 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       results = await jiosaavn.searchSongs(query, page, limit);
     }
 
-    // If < 3 results on page 1, also search Piped
+    // If < 3 results on page 1, also search YouTube Music
     if (results.length < 3 && page === 1 && type === 'song') {
       try {
-        const pipedResults = await piped.searchSongs(query);
+        const ytResults = await ytmusic.searchSongs(query, 15);
         const existingTitles = new Set(results.map(r => r.title.toLowerCase()));
-        for (const pr of pipedResults) {
-          if (!existingTitles.has(pr.title.toLowerCase())) {
-            results.push(pr);
+        for (const yt of ytResults) {
+          if (!existingTitles.has(yt.title.toLowerCase())) {
+            results.push(yt);
           }
         }
       } catch (err) {
-        console.warn('[SEARCH] Piped search failed:', (err as Error).message);
+        console.warn('[SEARCH] YTMusic search failed:', (err as Error).message);
       }
     }
 
