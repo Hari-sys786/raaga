@@ -46,6 +46,10 @@ export default function GenrePage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [songs, setSongs] = useState<Song[]>([]);
+  // Personalization: get favorites, recents, downloads
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { favorites, recentlyPlayed } = require('../../stores/libraryStore').useLibraryStore();
+  const { downloads }: { downloads: Record<string, any> } = require('../../stores/downloadStore').useDownloadStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +70,35 @@ export default function GenrePage() {
       const results = Array.isArray(data)
         ? data
         : data?.songs || data?.results || data?.data || [];
-      setSongs(results);
+
+      // Personalization: blend in favorites, recents, downloads matching genre
+      const lowerGenre = genreName.toLowerCase();
+      const userSongs: Song[] = [];
+      const seen = new Set<string>();
+      // Helper to add unique songs (match by genre name in title or artist)
+      const addUnique = (arr: Song[]) => {
+        for (const s of arr) {
+          if (!seen.has(s.id) && (
+            (s.title && s.title.toLowerCase().includes(lowerGenre)) ||
+            (s.artist && s.artist.toLowerCase().includes(lowerGenre))
+          )) {
+            seen.add(s.id);
+            userSongs.push(s);
+          }
+        }
+      };
+      addUnique(favorites);
+      addUnique(recentlyPlayed);
+      addUnique(Object.values(downloads ?? {}).map((d: any) => d.song));
+      // Merge userSongs at the top, then results (deduped)
+      const final: Song[] = [...userSongs];
+      for (const s of results) {
+        if (!seen.has(s.id)) {
+          seen.add(s.id);
+          final.push(s);
+        }
+      }
+      setSongs(final);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load songs');
     } finally {

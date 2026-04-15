@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayerStore } from '../../stores/playerStore';
 import { PlayerControls } from './PlayerControls';
 import { colors, typography } from '../../theme';
@@ -13,6 +14,7 @@ export function MiniPlayer() {
   const progress = usePlayerStore((s) => s.progress);
   const duration = usePlayerStore((s) => s.duration);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   if (!currentSong) return null;
 
@@ -22,7 +24,7 @@ export function MiniPlayer() {
     <Animated.View
       entering={SlideInDown.duration(400).springify()}
       exiting={SlideOutDown.duration(200)}
-      style={styles.container}
+      style={[styles.container, { paddingBottom: Math.max(insets.bottom, 0) }]}
     >
       {/* Amber progress bar — thin, at the very top */}
       <View style={styles.progressTrack}>

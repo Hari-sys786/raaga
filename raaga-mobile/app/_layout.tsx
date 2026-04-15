@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
 import { Stack, usePathname } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MiniPlayer } from '../components/Player/MiniPlayer';
 import { usePlayerStore } from '../stores/playerStore';
 import { colors } from '../theme';
 
 export default function RootLayout() {
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const isPlayerOpen = pathname === '/player';
   // MiniPlayer is rendered inside (tabs)/_layout for tab screens
   // For other stack screens (genre, mood, artist, album, trending), show it from root
@@ -48,7 +50,7 @@ export default function RootLayout() {
       </Stack>
       {/* MiniPlayer for non-tab stack screens (genre, mood, artist, album, trending) */}
       {showMiniPlayer && (
-        <View style={styles.miniPlayerWrapper} pointerEvents="box-none">
+        <View style={[styles.miniPlayerWrapper, { paddingBottom: Math.max(insets.bottom, 0) }]} pointerEvents="box-none">
           <MiniPlayer />
         </View>
       )}

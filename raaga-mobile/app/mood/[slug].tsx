@@ -37,6 +37,10 @@ export default function MoodPage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [songs, setSongs] = useState<Song[]>([]);
+  // Personalization: get favorites, recents, downloads
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { favorites, recentlyPlayed } = require('../../stores/libraryStore').useLibraryStore();
+  const { downloads } = require('../../stores/downloadStore').useDownloadStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +68,34 @@ export default function MoodPage() {
         }
       }
 
-      setSongs(results);
+      // Personalization: blend in favorites, recents, downloads matching mood
+      const lowerMood = moodSlug.toLowerCase();
+      const userSongs: Song[] = [];
+      const seen = new Set<string>();
+      // Helper to add unique songs
+      const addUnique = (arr: Song[]) => {
+        for (const s of arr) {
+          if (!seen.has(s.id) && (
+            (s.genre && s.genre.toLowerCase().includes(lowerMood)) ||
+            (s.mood && s.mood.toLowerCase().includes(lowerMood))
+          )) {
+            seen.add(s.id);
+            userSongs.push(s);
+          }
+        }
+      };
+      addUnique(favorites);
+      addUnique(recentlyPlayed);
+      addUnique(Object.values(downloads).map((d) => d.song));
+      // Merge userSongs at the top, then results (deduped)
+      const final: Song[] = [...userSongs];
+      for (const s of results) {
+        if (!seen.has(s.id)) {
+          seen.add(s.id);
+          final.push(s);
+        }
+      }
+      setSongs(final);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load songs');
     } finally {

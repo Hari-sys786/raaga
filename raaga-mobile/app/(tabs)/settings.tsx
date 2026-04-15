@@ -414,12 +414,7 @@ export default function SettingsScreen() {
             value={formatBytes(cacheSize)}
           />
           <View style={styles.cardDivider} />
-          <SettingRow
-            label="Clear Cache"
-            icon="trash-outline"
-            onPress={handleClearCache}
-            destructive
-          />
+          {/* Clear Cache option removed as per requirements */}
         </GlassCard>
       </View>
 

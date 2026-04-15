@@ -53,7 +53,11 @@ export default function ArtistPage() {
       const response = await api.artist(id);
       const data = response?.data || response;
       setArtist(data);
-      const topSongs = data?.topSongs || [];
+      let topSongs = data?.topSongs || [];
+      // If no topSongs, fetch songs by artist name
+      if (!topSongs.length && data?.name) {
+        topSongs = await jiosaavn.searchSongs(data.name, 1, 30);
+      }
       setSongs(topSongs);
       setHasMore(topSongs.length >= 20);
       setPage(1);
@@ -86,8 +90,14 @@ export default function ArtistPage() {
         setHasMore(false);
       } else {
         const existingIds = new Set(songs.map((s) => s.id));
-        const newSongs = filtered.filter((s) => !existingIds.has(s.id));
-        setSongs((prev) => [...prev, ...newSongs]);
+        // Map source 'youtube' to 'ytmusic' for type compatibility and cast to Song
+        const newSongs = filtered
+          .filter((s) => !existingIds.has(s.id))
+          .map((s) => ({
+            ...s,
+            source: (s.source === 'youtube' ? 'ytmusic' : s.source) as 'jiosaavn' | 'ytmusic' | undefined,
+          }) as Song);
+        setSongs((prev: Song[]) => [...prev, ...newSongs]);
         setPage(nextPage);
         if (newSongs.length < 5) setHasMore(false);
       }
@@ -119,7 +129,10 @@ export default function ArtistPage() {
     [songs, play, setQueue]
   );
 
-  const artistImage = artist?.image || (paramImage ? decodeURIComponent(paramImage) : '');
+  // Fallback to placeholder if image is missing or empty string
+  const artistImage = artist?.image && artist.image.trim() !== ''
+    ? artist.image
+    : (paramImage ? decodeURIComponent(paramImage) : '');
   const artistName = artist?.name || (paramName ? decodeURIComponent(paramName) : '');
 
   const renderHeader = () => (

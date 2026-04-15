@@ -27,13 +27,15 @@ export default function TabLayout() {
         tabBar={(props) => (
           <View>
             {/* MiniPlayer sits above tab bar on tab screens */}
-            <MiniPlayer />
+            <View style={{ paddingBottom: Math.max(insets.bottom, 0) }}>
+              <MiniPlayer />
+            </View>
             <View style={styles.tabBarOuter}>
               <LinearGradient
                 colors={['rgba(15,21,32,0.95)', 'rgba(8,11,18,0.99)']}
                 style={StyleSheet.absoluteFill}
               />
-              <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+              <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}> 
                 {props.state.routes.map((route, index) => {
                   const { options } = props.descriptors[route.key];
                   const label = options.title ?? route.name;

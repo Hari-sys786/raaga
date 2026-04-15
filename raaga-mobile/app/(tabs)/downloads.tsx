@@ -14,7 +14,6 @@ import Animated, { FadeInDown, FadeIn, SlideInDown } from 'react-native-reanimat
 import { Screen } from '../../components/Common/Screen';
 import { useDownloadStore, DownloadedSong, DownloadQueueItem } from '../../stores/downloadStore';
 import { usePlayerStore } from '../../stores/playerStore';
-import React from 'react';
 import { deleteSong, deleteAllDownloads, getStorageUsed } from '../../services/downloads';
 import { colors, typography, spacing } from '../../theme';
 
@@ -113,7 +112,7 @@ function DeleteModal({
               </TouchableOpacity>
               <TouchableOpacity
                 style={modalStyles.deleteButton}
-                onPress={() => { onConfirm(); onClose(); }}
+                onPress={onConfirm}
                 activeOpacity={0.7}
               >
                 <Ionicons name="trash-outline" size={16} color="#fff" />
@@ -387,7 +386,8 @@ export default function DownloadsScreen() {
       await deleteSong(deleteTarget.song.id);
       removeDownload(deleteTarget.song.id);
       refreshStorage();
-      setDeleteTarget(null);
+      // Only close modal after async completes
+      setTimeout(() => setDeleteTarget(null), 100);
     },
     [deleteTarget, removeDownload, refreshStorage],
   );
@@ -402,7 +402,8 @@ export default function DownloadsScreen() {
       await deleteAllDownloads();
       clearAll();
       refreshStorage();
-      setShowDeleteAll(false);
+      // Only close modal after async completes
+      setTimeout(() => setShowDeleteAll(false), 100);
     },
     [clearAll, refreshStorage],
   );

@@ -117,8 +117,9 @@ export default function SearchScreen() {
       setIsLoading(false);
       return;
     }
-    setIsLoading(true);
+    // Only set loading if debounce triggers a search
     debounceTimer.current = setTimeout(() => {
+      setIsLoading(true);
       performSearch(text);
     }, 400);
   };
