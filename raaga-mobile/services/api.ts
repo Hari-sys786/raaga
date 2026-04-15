@@ -1,43 +1,158 @@
-import { API_BASE } from './config';
+// Raaga API — serverless mode
+// All metadata calls go directly to JioSaavn/YouTube/lrclib APIs
+// Only audio streaming still uses the server proxy
 
-async function fetchJSON<T = any>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`API Error: ${res.status} ${res.statusText}`);
-  }
-  return res.json();
-}
+import { STREAM_BASE } from './config';
+import { getCached, setCached } from './cache';
+import * as jiosaavn from './jiosaavn';
+import * as ytmusic from './ytmusic';
+import * as lrclib from './lrclib';
+
+// Cache TTLs
+const TTL_TRENDING = 6 * 60 * 60 * 1000;   // 6 hours
+const TTL_GENRE    = 3 * 60 * 60 * 1000;   // 3 hours
+const TTL_SEARCH   = 5 * 60 * 1000;         // 5 minutes
+const TTL_SONG     = 1 * 60 * 60 * 1000;   // 1 hour
 
 export const api = {
-  search: (q: string, page = 1) =>
-    fetchJSON(`${API_BASE}/search?q=${encodeURIComponent(q)}&type=song&page=${page}`),
+  /** Search songs — combines JioSaavn + YouTube results */
+  search: async (q: string, page = 1) => {
+    const cacheKey = `search:${q}:${page}`;
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
 
-  searchAll: (q: string) =>
-    fetchJSON(`${API_BASE}/search?q=${encodeURIComponent(q)}&type=all`),
+    const [jsResults, ytResults] = await Promise.allSettled([
+      jiosaavn.searchSongs(q, page, 20),
+      page === 1 ? ytmusic.searchSongs(q, 10) : Promise.resolve([]),
+    ]);
 
-  trending: (lang = 'hindi') =>
-    fetchJSON(`${API_BASE}/trending?lang=${lang}`),
+    const songs = [
+      ...(jsResults.status === 'fulfilled' ? jsResults.value : []),
+      ...(ytResults.status === 'fulfilled' ? ytResults.value : []),
+    ];
 
-  song: (id: string, source = 'jiosaavn') =>
-    fetchJSON(`${API_BASE}/song/${id}?source=${source}`),
+    const result = { results: songs, total: songs.length, query: q };
+    setCached(cacheKey, result, TTL_SEARCH);
+    return result;
+  },
 
+  /** Search all (songs + albums + artists) */
+  searchAll: async (q: string) => {
+    const cacheKey = `searchAll:${q}`;
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
+
+    const [songs, albums, artists] = await Promise.allSettled([
+      jiosaavn.searchSongs(q, 1, 10),
+      jiosaavn.searchAlbums(q),
+      jiosaavn.searchArtists(q),
+    ]);
+
+    const result = {
+      results: songs.status === 'fulfilled' ? songs.value : [],
+      albums: albums.status === 'fulfilled' ? albums.value : [],
+      artists: artists.status === 'fulfilled' ? artists.value : [],
+      query: q,
+    };
+
+    setCached(cacheKey, result, TTL_SEARCH);
+    return result;
+  },
+
+  /** Trending songs for given language(s) */
+  trending: async (lang = 'hindi') => {
+    const cacheKey = `trending:${lang}`;
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
+
+    const [jsResults, ytResults] = await Promise.allSettled([
+      jiosaavn.getTrending(lang),
+      ytmusic.getTrending(10),
+    ]);
+
+    const songs = [
+      ...(jsResults.status === 'fulfilled' ? jsResults.value : []),
+      ...(ytResults.status === 'fulfilled' ? ytResults.value : []),
+    ];
+
+    setCached(cacheKey, songs, TTL_TRENDING);
+    return songs;
+  },
+
+  /** Get song details by ID and source */
+  song: async (id: string, source = 'jiosaavn') => {
+    const cacheKey = `song:${source}:${id}`;
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
+
+    let song = null;
+    if (source === 'youtube') {
+      // YouTube song details not available directly — return minimal object
+      song = { id: `youtube-${id}`, source: 'youtube', sourceId: id, quality: 'high' };
+    } else {
+      song = await jiosaavn.getSongDetails(id);
+    }
+
+    if (song) setCached(cacheKey, song, TTL_SONG);
+    return song;
+  },
+
+  /** Stream URL — always via server proxy for reliable audio */
   streamUrl: (id: string, source = 'jiosaavn') =>
-    `${API_BASE}/stream/${id}?source=${source}`,
+    `${STREAM_BASE}/stream/${id}?source=${source}`,
 
-  artist: (id: string) =>
-    fetchJSON(`${API_BASE}/artist/${id}`),
+  /** Get artist details */
+  artist: async (id: string) => {
+    const cacheKey = `artist:${id}`;
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
 
-  album: (id: string) =>
-    fetchJSON(`${API_BASE}/album/${id}`),
+    const result = await jiosaavn.getArtist(id);
+    if (result) setCached(cacheKey, result, TTL_SONG);
+    return result;
+  },
 
-  lyrics: (artist: string, track: string) =>
-    fetchJSON(
-      `${API_BASE}/lyrics?artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}`
-    ),
+  /** Get album details */
+  album: async (id: string) => {
+    const cacheKey = `album:${id}`;
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
 
-  viral: () =>
-    fetchJSON(`${API_BASE}/viral`),
+    const result = await jiosaavn.getAlbum(id);
+    if (result) setCached(cacheKey, result, TTL_SONG);
+    return result;
+  },
 
-  genre: (slug: string) =>
-    fetchJSON(`${API_BASE}/genre/${encodeURIComponent(slug)}`),
+  /** Get lyrics */
+  lyrics: async (artist: string, track: string) => {
+    const cacheKey = `lyrics:${artist}:${track}`;
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
+
+    const result = await lrclib.getLyrics(artist, track);
+    if (result) setCached(cacheKey, result, TTL_SONG);
+    return result;
+  },
+
+  /** Viral/trending — uses Hindi trending as viral proxy */
+  viral: async () => {
+    const cacheKey = 'viral';
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
+
+    const songs = await jiosaavn.getTrending('hindi,english');
+    setCached(cacheKey, songs, TTL_TRENDING);
+    return songs;
+  },
+
+  /** Genre songs */
+  genre: async (slug: string) => {
+    const cacheKey = `genre:${slug}`;
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
+
+    const songs = await jiosaavn.getGenreSongs(slug);
+    setCached(cacheKey, songs, TTL_GENRE);
+    return songs;
+  },
 };
