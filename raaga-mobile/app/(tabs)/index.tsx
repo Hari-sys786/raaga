@@ -213,7 +213,23 @@ export default function HomeScreen() {
     };
     addUnique(favorites);
     addUnique(recentlyPlayed);
-    addUnique(trending.slice(0, 20));
+
+    // Detect user's preferred languages from listening history
+    const userLangs = new Set<string>();
+    [...favorites, ...recentlyPlayed].forEach((s) => {
+      if (s.language) userLangs.add(s.language.toLowerCase());
+    });
+
+    // Filter trending to include songs matching user's languages (if any detected)
+    if (userLangs.size > 0) {
+      const langTrending = trending.filter(
+        (s) => s.language && userLangs.has(s.language.toLowerCase())
+      );
+      addUnique(langTrending.length > 5 ? langTrending.slice(0, 30) : trending.slice(0, 20));
+    } else {
+      addUnique(trending.slice(0, 20));
+    }
+
     // Fisher-Yates shuffle
     for (let i = mix.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));

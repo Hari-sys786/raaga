@@ -27,7 +27,7 @@ export default function TabLayout() {
         tabBar={(props) => (
           <View>
             {/* MiniPlayer sits above tab bar on tab screens */}
-            <View style={{ paddingBottom: Math.max(insets.bottom, 0) }}>
+            <View>
               <MiniPlayer />
             </View>
             <View style={styles.tabBarOuter}>

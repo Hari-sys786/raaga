@@ -383,11 +383,12 @@ export default function DownloadsScreen() {
   const confirmDelete = useCallback(
     async () => {
       if (!deleteTarget) return;
-      await deleteSong(deleteTarget.song.id);
-      removeDownload(deleteTarget.song.id);
+      const songId = deleteTarget.song.id;
+      // Close modal first to prevent flicker from list re-render
+      setDeleteTarget(null);
+      await deleteSong(songId);
+      removeDownload(songId);
       refreshStorage();
-      // Only close modal after async completes
-      setTimeout(() => setDeleteTarget(null), 100);
     },
     [deleteTarget, removeDownload, refreshStorage],
   );
@@ -399,11 +400,11 @@ export default function DownloadsScreen() {
 
   const confirmDeleteAll = useCallback(
     async () => {
+      // Close modal first to prevent flicker from list re-render
+      setShowDeleteAll(false);
       await deleteAllDownloads();
       clearAll();
       refreshStorage();
-      // Only close modal after async completes
-      setTimeout(() => setShowDeleteAll(false), 100);
     },
     [clearAll, refreshStorage],
   );

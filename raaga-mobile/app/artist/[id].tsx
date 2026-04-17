@@ -52,14 +52,21 @@ export default function ArtistPage() {
       setError(null);
       const response = await api.artist(id);
       const data = response?.data || response;
-      setArtist(data);
+      // Handle image being an array (some API responses return [{quality, url}])
+      let resolvedImage = data?.image || '';
+      if (Array.isArray(resolvedImage)) {
+        resolvedImage = resolvedImage.find((i: any) => i.quality === '500x500')?.url ||
+          resolvedImage[resolvedImage.length - 1]?.url || '';
+      }
+      setArtist({ ...data, image: resolvedImage });
       let topSongs = data?.topSongs || [];
       // If no topSongs, fetch songs by artist name
       if (!topSongs.length && data?.name) {
         topSongs = await jiosaavn.searchSongs(data.name, 1, 30);
       }
       setSongs(topSongs);
-      setHasMore(topSongs.length >= 20);
+      // Allow loading more as long as we got any songs
+      setHasMore(topSongs.length >= 5);
       setPage(1);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load artist.');

@@ -443,10 +443,15 @@ export async function getArtist(id: string): Promise<Record<string, unknown> | n
     const topSongs = (data.topSongs || data.songs || [])
       .map(mapDirectSong)
       .filter(Boolean) as Song[];
+    // Handle both string and array image formats from JioSaavn API
+    const imageRaw = Array.isArray(data.image)
+      ? (data.image as any[]).find((i: any) => i.quality === '500x500')?.url ||
+        (data.image as any[])[((data.image as any[]).length - 1)]?.url || ''
+      : data.image || '';
     return {
       id: data.artistId || id,
       name: data.name || '',
-      image: getHighResImage(data.image || ''),
+      image: getHighResImage(imageRaw as string),
       followerCount: data.follower_count || 0,
       isVerified: data.isVerified || false,
       topSongs,

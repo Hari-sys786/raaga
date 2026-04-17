@@ -156,11 +156,11 @@ export default function SearchScreen() {
   const hasResults = query.trim().length > 0;
   const showDefault = !hasResults;
 
-  const renderHeader = () => (
+  const renderHeader = useCallback(() => (
     <View>
       {/* Albums section */}
       {results.albums.length > 0 && (
-        <Animated.View entering={FadeInDown.duration(300)} style={styles.horizontalSection}>
+        <View style={styles.horizontalSection}>
           <Text style={styles.sectionLabel}>ALBUMS</Text>
           <ScrollView
             horizontal
@@ -192,12 +192,12 @@ export default function SearchScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </Animated.View>
+        </View>
       )}
 
       {/* Artists section */}
       {results.artists.length > 0 && (
-        <Animated.View entering={FadeInDown.duration(300).delay(50)} style={styles.horizontalSection}>
+        <View style={styles.horizontalSection}>
           <Text style={styles.sectionLabel}>ARTISTS</Text>
           <ScrollView
             horizontal
@@ -228,17 +228,17 @@ export default function SearchScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </Animated.View>
+        </View>
       )}
 
       {/* Songs label */}
       {results.songs.length > 0 && (
-        <Animated.View entering={FadeInDown.duration(300).delay(100)}>
+        <View>
           <Text style={[styles.sectionLabel, { marginTop: 4 }]}>SONGS</Text>
-        </Animated.View>
+        </View>
       )}
     </View>
-  );
+  ), [results.albums, results.artists, results.songs.length]);
 
   return (
     <Screen>

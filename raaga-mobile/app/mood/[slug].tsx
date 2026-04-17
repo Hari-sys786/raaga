@@ -68,31 +68,36 @@ export default function MoodPage() {
         }
       }
 
-      // Personalization: blend in favorites, recents, downloads matching mood
-      const lowerMood = moodSlug.toLowerCase();
-      const userSongs: Song[] = [];
+      // Personalization: detect user's preferred languages from listening history
+      // and prioritize results matching those languages
+      const userLangs = new Set<string>();
+      [...favorites, ...recentlyPlayed].forEach((s) => {
+        if (s.language) userLangs.add(s.language.toLowerCase());
+      });
+
       const seen = new Set<string>();
-      // Helper to add unique songs
-      const addUnique = (arr: Song[]) => {
-        for (const s of arr) {
-          if (!seen.has(s.id) && (
-            (s.genre && s.genre.toLowerCase().includes(lowerMood)) ||
-            (s.mood && s.mood.toLowerCase().includes(lowerMood))
-          )) {
+      const final: Song[] = [];
+
+      // If user has language preferences, put matching-language results first
+      if (userLangs.size > 0) {
+        const matching = results.filter(
+          (s: Song) => s.language && userLangs.has(s.language.toLowerCase())
+        );
+        const rest = results.filter(
+          (s: Song) => !s.language || !userLangs.has(s.language.toLowerCase())
+        );
+        for (const s of [...matching, ...rest]) {
+          if (!seen.has(s.id)) {
             seen.add(s.id);
-            userSongs.push(s);
+            final.push(s);
           }
         }
-      };
-      addUnique(favorites);
-      addUnique(recentlyPlayed);
-      addUnique(Object.values(downloads).map((d) => d.song));
-      // Merge userSongs at the top, then results (deduped)
-      const final: Song[] = [...userSongs];
-      for (const s of results) {
-        if (!seen.has(s.id)) {
-          seen.add(s.id);
-          final.push(s);
+      } else {
+        for (const s of results) {
+          if (!seen.has(s.id)) {
+            seen.add(s.id);
+            final.push(s);
+          }
         }
       }
       setSongs(final);
