@@ -50,22 +50,44 @@ export default function ArtistPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.artist(id);
+
+      // Decode params for fallback
+      const fallbackName = paramName ? decodeURIComponent(paramName) : '';
+      const fallbackImage = paramImage ? decodeURIComponent(paramImage) : '';
+
+      let response: any = null;
+      try {
+        response = await api.artist(id);
+      } catch {
+        // API failed — will use fallback below
+      }
       const data = response?.data || response;
-      // Handle image being an array (some API responses return [{quality, url}])
+
+      // Resolve image (handle array format)
       let resolvedImage = data?.image || '';
       if (Array.isArray(resolvedImage)) {
         resolvedImage = resolvedImage.find((i: any) => i.quality === '500x500')?.url ||
           resolvedImage[resolvedImage.length - 1]?.url || '';
       }
-      setArtist({ ...data, image: resolvedImage });
+
+      // Use API data if valid, otherwise construct from search params
+      const artistName = data?.name || fallbackName || 'Unknown Artist';
+      const artistImage = resolvedImage || fallbackImage || '';
+
+      setArtist({
+        id: data?.id || id,
+        name: artistName,
+        image: artistImage,
+        followerCount: data?.followerCount || 0,
+        isVerified: data?.isVerified || false,
+      });
+
       let topSongs = data?.topSongs || [];
-      // If no topSongs, fetch songs by artist name
-      if (!topSongs.length && data?.name) {
-        topSongs = await jiosaavn.searchSongs(data.name, 1, 30);
+      // Always search by artist name if API returned no songs
+      if (!topSongs.length && artistName && artistName !== 'Unknown Artist') {
+        topSongs = await jiosaavn.searchSongs(artistName, 1, 30);
       }
       setSongs(topSongs);
-      // Allow loading more as long as we got any songs
       setHasMore(topSongs.length >= 5);
       setPage(1);
     } catch (err: unknown) {
@@ -73,7 +95,7 @@ export default function ArtistPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, paramName, paramImage]);
 
   useEffect(() => {
     fetchArtist();

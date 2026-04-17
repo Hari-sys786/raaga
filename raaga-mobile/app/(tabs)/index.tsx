@@ -249,10 +249,21 @@ export default function HomeScreen() {
 
       {/* ── Hero Header ── */}
       <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
-        <Text style={styles.greeting}>{getGreeting()}</Text>
-        <View style={styles.logoBlock}>
-          <Text style={styles.logo}>राग</Text>
-          <Text style={styles.logoSub}>Raaga</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
+            <View style={styles.logoBlock}>
+              <Text style={styles.logo}>राग</Text>
+              <Text style={styles.logoSub}>Raaga</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.headerSearchButton}
+            onPress={() => router.push('/search')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="search" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
       </Animated.View>
 
@@ -383,6 +394,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screenPadding,
     paddingTop: spacing.xxl + 8,
     paddingBottom: spacing.xl,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerSearchButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
   },
   greeting: {
     ...typography.bodySmall,

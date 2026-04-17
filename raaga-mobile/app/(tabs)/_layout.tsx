@@ -1,3 +1,4 @@
+import React from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { View, Text, StyleSheet, Pressable, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -55,27 +56,6 @@ export default function TabLayout() {
             <View>
               <MiniPlayer />
             </View>
-            {/* Quick actions row */}
-            <View style={styles.quickActions}>
-              <TouchableOpacity
-                style={styles.quickButton}
-                onPress={() => props.navigation.navigate('search')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="search" size={16} color={colors.defaultAccent} />
-                <Text style={styles.quickButtonText}>Search</Text>
-              </TouchableOpacity>
-              {(favorites.length > 0 || recentlyPlayed.length > 0) && (
-                <TouchableOpacity
-                  style={[styles.quickButton, styles.quickButtonAccent]}
-                  onPress={handlePlayMix}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="sparkles" size={16} color="#fff" />
-                  <Text style={[styles.quickButtonText, { color: '#fff' }]}>Play Mix</Text>
-                </TouchableOpacity>
-              )}
-            </View>
             <View style={styles.tabBarOuter}>
               <LinearGradient
                 colors={['rgba(15,21,32,0.95)', 'rgba(8,11,18,0.99)']}
@@ -90,32 +70,43 @@ export default function TabLayout() {
                   const iconName = isFocused ? iconConfig?.active : iconConfig?.inactive;
                   const color = isFocused ? colors.defaultAccent : colors.textTertiary;
 
+                  // Insert Play Mix button after the 2nd tab (search)
+                  const showMixAfter = index === 1 && (favorites.length > 0 || recentlyPlayed.length > 0);
+
                   return (
-                    <Pressable
-                      key={route.key}
-                      style={styles.tabItem}
-                      onPress={() => {
-                        const event = props.navigation.emit({
-                          type: 'tabPress',
-                          target: route.key,
-                          canPreventDefault: true,
-                        });
-                        if (!isFocused && !event.defaultPrevented) {
-                          props.navigation.navigate(route.name);
-                        }
-                      }}
-                    >
-                      {/* Amber dot indicator above icon */}
-                      {isFocused ? (
-                        <View style={styles.activeDot} />
-                      ) : (
-                        <View style={styles.dotPlaceholder} />
+                    <React.Fragment key={route.key}>
+                      <Pressable
+                        style={styles.tabItem}
+                        onPress={() => {
+                          const event = props.navigation.emit({
+                            type: 'tabPress',
+                            target: route.key,
+                            canPreventDefault: true,
+                          });
+                          if (!isFocused && !event.defaultPrevented) {
+                            props.navigation.navigate(route.name);
+                          }
+                        }}
+                      >
+                        {isFocused ? (
+                          <View style={styles.activeDot} />
+                        ) : (
+                          <View style={styles.dotPlaceholder} />
+                        )}
+                        <Ionicons name={iconName as any} size={24} color={color} />
+                        <Text style={[styles.tabLabel, { color }]}>
+                          {label}
+                        </Text>
+                      </Pressable>
+                      {showMixAfter && (
+                        <Pressable style={styles.mixTabItem} onPress={handlePlayMix}>
+                          <View style={styles.mixFab}>
+                            <Ionicons name="sparkles" size={22} color="#fff" />
+                          </View>
+                          <Text style={styles.mixTabLabel}>Mix</Text>
+                        </Pressable>
                       )}
-                      <Ionicons name={iconName as any} size={24} color={color} />
-                      <Text style={[styles.tabLabel, { color }]}>
-                        {label}
-                      </Text>
-                    </Pressable>
+                    </React.Fragment>
                   );
                 })}
               </View>
@@ -170,32 +161,29 @@ const styles = StyleSheet.create({
     ...typography.tabLabel,
     fontSize: 10,
   },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(8,11,18,0.95)',
-  },
-  quickButton: {
-    flexDirection: 'row',
+  mixTabItem: {
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: 'rgba(6,182,212,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(6,182,212,0.2)',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
   },
-  quickButtonAccent: {
+  mixFab: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: colors.defaultAccent,
-    borderColor: colors.defaultAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -14,
+    shadowColor: colors.defaultAccent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  quickButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
+  mixTabLabel: {
+    ...typography.tabLabel,
+    fontSize: 9,
     color: colors.defaultAccent,
+    marginTop: 2,
   },
 });

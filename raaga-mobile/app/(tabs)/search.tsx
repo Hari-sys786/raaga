@@ -177,7 +177,7 @@ export default function SearchScreen() {
 
   const handleArtistPress = (artist: Artist) => {
     Keyboard.dismiss();
-    router.push(`/artist/${artist.id}`);
+    router.push(`/artist/${artist.id}?name=${encodeURIComponent(artist.name || '')}&image=${encodeURIComponent(artist.image || '')}`);
   };
 
   const hasResults = query.trim().length > 0;
