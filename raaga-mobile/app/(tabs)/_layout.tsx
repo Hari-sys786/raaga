@@ -1,9 +1,11 @@
-import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
+import { View, Text, StyleSheet, Pressable, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MiniPlayer } from '../../components/Player/MiniPlayer';
+import { usePlayerStore } from '../../stores/playerStore';
+import { useLibraryStore } from '../../stores/libraryStore';
 import { colors, typography } from '../../theme';
 
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
@@ -16,6 +18,29 @@ const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const play = usePlayerStore((s) => s.play);
+  const setQueue = usePlayerStore((s) => s.setQueue);
+  const favorites = useLibraryStore((s) => s.favorites);
+  const recentlyPlayed = useLibraryStore((s) => s.recentlyPlayed);
+
+  const handlePlayMix = () => {
+    const seen = new Set<string>();
+    const mix: any[] = [];
+    [...favorites, ...recentlyPlayed].forEach((s) => {
+      if (!seen.has(s.id)) { seen.add(s.id); mix.push(s); }
+    });
+    if (mix.length > 0) {
+      // Fisher-Yates shuffle
+      for (let i = mix.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [mix[i], mix[j]] = [mix[j], mix[i]];
+      }
+      setQueue(mix);
+      play(mix[0]);
+    }
+  };
+
   return (
     <View style={styles.wrapper}>
       <Tabs
@@ -29,6 +54,27 @@ export default function TabLayout() {
             {/* MiniPlayer sits above tab bar on tab screens */}
             <View>
               <MiniPlayer />
+            </View>
+            {/* Quick actions row */}
+            <View style={styles.quickActions}>
+              <TouchableOpacity
+                style={styles.quickButton}
+                onPress={() => props.navigation.navigate('search')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="search" size={16} color={colors.defaultAccent} />
+                <Text style={styles.quickButtonText}>Search</Text>
+              </TouchableOpacity>
+              {(favorites.length > 0 || recentlyPlayed.length > 0) && (
+                <TouchableOpacity
+                  style={[styles.quickButton, styles.quickButtonAccent]}
+                  onPress={handlePlayMix}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="sparkles" size={16} color="#fff" />
+                  <Text style={[styles.quickButtonText, { color: '#fff' }]}>Play Mix</Text>
+                </TouchableOpacity>
+              )}
             </View>
             <View style={styles.tabBarOuter}>
               <LinearGradient
@@ -123,5 +169,33 @@ const styles = StyleSheet.create({
   tabLabel: {
     ...typography.tabLabel,
     fontSize: 10,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(8,11,18,0.95)',
+  },
+  quickButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(6,182,212,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(6,182,212,0.2)',
+  },
+  quickButtonAccent: {
+    backgroundColor: colors.defaultAccent,
+    borderColor: colors.defaultAccent,
+  },
+  quickButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.defaultAccent,
   },
 });

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown, FadeIn, SlideInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { Screen } from '../../components/Common/Screen';
 import { useDownloadStore, DownloadedSong, DownloadQueueItem } from '../../stores/downloadStore';
 import { usePlayerStore } from '../../stores/playerStore';
@@ -55,10 +55,9 @@ function DeleteModal({
   isDeleteAll,
 }: DeleteModalProps) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={modalStyles.overlay} onPress={onClose}>
-        <Animated.View
-          entering={SlideInDown.duration(300).springify().damping(18)}
+        <View
           style={modalStyles.container}
         >
           <Pressable onPress={(e) => e.stopPropagation()}>
@@ -120,7 +119,7 @@ function DeleteModal({
               </TouchableOpacity>
             </View>
           </Pressable>
-        </Animated.View>
+        </View>
       </Pressable>
     </Modal>
   );

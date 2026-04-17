@@ -148,8 +148,30 @@ export const usePlayerStore = create<PlayerState>()(
         },
 
         resume: () => {
-          set({ isPlaying: true });
-          playerService.resume();
+          const { currentSong, progress } = get();
+          // If player has no active audio (e.g. after app restart), reload the song
+          if (currentSong) {
+            set({ isPlaying: true });
+            const localPath = getLocalPath ? getLocalPath(currentSong.id) : null;
+            const uri = localPath ?? api.streamUrl(currentSong.id, currentSong.source || 'jiosaavn');
+            playerService.loadAndPlay(uri, {
+              title: currentSong.title,
+              artist: currentSong.artist,
+              artwork: currentSong.image,
+            }).then(() => {
+              // Seek to saved position
+              if (progress > 0) {
+                playerService.seekTo(progress * 1000);
+              }
+              const speed = useSettingsStore.getState().playbackSpeed;
+              if (speed !== 1.0) {
+                playerService.setPlaybackRate(speed).catch(console.error);
+              }
+            }).catch((err) => {
+              console.error('[PlayerStore] Resume error:', err);
+              set({ isPlaying: false });
+            });
+          }
         },
 
         next: () => {
@@ -279,12 +301,12 @@ export const usePlayerStore = create<PlayerState>()(
 
         // Call this on app startup to resume from persisted state
         restorePlayback: () => {
-          const { currentSong, queue } = get();
+          const { currentSong, queue, progress } = get();
           if (currentSong && queue.length > 0) {
-            console.log('[PlayerStore] Restored queue:', queue.length, 'songs. Last playing:', currentSong.title);
-            // Don't auto-play — just show the queue/mini player.
-            // User taps play to resume.
-            set({ isPlaying: false, progress: 0, _hydrated: true });
+            console.log('[PlayerStore] Restored queue:', queue.length, 'songs. Last playing:', currentSong.title, 'at', Math.round(progress), 's');
+            // Keep persisted progress so MiniPlayer shows correct position.
+            // Don't auto-play — user taps play to resume.
+            set({ isPlaying: false, _hydrated: true });
           } else {
             set({ _hydrated: true });
           }
@@ -300,6 +322,8 @@ export const usePlayerStore = create<PlayerState>()(
         originalQueue: state.originalQueue,
         shuffle: state.shuffle,
         repeat: state.repeat,
+        progress: state.progress,
+        duration: state.duration,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

@@ -31,7 +31,17 @@ export default function AlbumPage() {
       setLoading(true);
       setError(null);
       const data = await api.album(id);
-      const normalized: Album = data?.album || data;
+      // api.album returns { album: {...metadata}, songs: [...] }
+      // Merge songs into the album object
+      const albumMeta = data?.album || data;
+      const albumSongs = data?.songs || albumMeta?.songs || [];
+      // Handle image being array format from API
+      let albumImage = albumMeta?.image || albumMeta?.artwork || '';
+      if (Array.isArray(albumImage)) {
+        albumImage = albumImage.find((i: any) => i.quality === '500x500')?.url ||
+          albumImage[albumImage.length - 1]?.url || '';
+      }
+      const normalized: Album = { ...albumMeta, songs: albumSongs, image: albumImage };
       setAlbum(normalized);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load album');

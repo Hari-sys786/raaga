@@ -21,10 +21,11 @@ import { api } from '../../services/api';
 import { usePlayerStore } from '../../stores/playerStore';
 import { colors, typography, spacing } from '../../theme';
 import { Song } from '../../types';
+import { useLibraryStore } from '../../stores/libraryStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const POPULAR_SEARCHES = [
+const DEFAULT_SEARCHES = [
   'Arijit Singh',
   'Kesariya',
   'Tum Hi Ho',
@@ -70,6 +71,32 @@ export default function SearchScreen() {
   const router = useRouter();
 
   const { play, setQueue } = usePlayerStore();
+  const { favorites, recentlyPlayed } = useLibraryStore();
+
+  // Build personalized popular searches from user's listening history
+  const popularSearches = React.useMemo(() => {
+    const seen = new Set<string>();
+    const suggestions: string[] = [];
+    // Extract unique artists from favorites and recent plays
+    [...favorites, ...recentlyPlayed].forEach((s) => {
+      if (s.artist) {
+        const primary = s.artist.split(',')[0].trim();
+        if (primary && !seen.has(primary.toLowerCase()) && suggestions.length < 4) {
+          seen.add(primary.toLowerCase());
+          suggestions.push(primary);
+        }
+      }
+    });
+    // Fill remaining slots with defaults (skip duplicates)
+    for (const term of DEFAULT_SEARCHES) {
+      if (suggestions.length >= 8) break;
+      if (!seen.has(term.toLowerCase())) {
+        seen.add(term.toLowerCase());
+        suggestions.push(term);
+      }
+    }
+    return suggestions;
+  }, [favorites, recentlyPlayed]);
 
   useEffect(() => {
     loadTrending();
@@ -294,7 +321,7 @@ export default function SearchScreen() {
             <Animated.View entering={FadeInDown.duration(400).delay(140)}>
               <Text style={styles.sectionLabel}>POPULAR SEARCHES</Text>
               <View style={styles.chipsContainer}>
-                {POPULAR_SEARCHES.map((term, index) => (
+                {popularSearches.map((term, index) => (
                   <TouchableOpacity
                     key={index}
                     style={styles.chip}

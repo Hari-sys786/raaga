@@ -358,7 +358,7 @@ export default function SettingsScreen() {
           <SettingRow
             label="Equalizer"
             icon="options-outline"
-            onPress={() => router.push('/equalizer' as any)}
+            onPress={() => router.push('/settings/equalizer' as any)}
           />
         </GlassCard>
       </View>
