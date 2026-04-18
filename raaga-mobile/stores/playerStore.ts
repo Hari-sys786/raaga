@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Song } from '../types';
 import { playerService } from '../services/player';
 import { api } from '../services/api';
-import { getLocalPath } from '../services/downloads';
+import { getLocalPath, prefetchNextSong } from '../services/downloads';
 import { useLibraryStore } from './libraryStore';
 import { useSettingsStore } from './settingsStore';
 import { showNowPlaying, clearNowPlaying } from '../services/notifications';
@@ -133,6 +133,12 @@ export const usePlayerStore = create<PlayerState>()(
               const speed = useSettingsStore.getState().playbackSpeed;
               if (speed !== 1.0) {
                 playerService.setPlaybackRate(speed).catch(console.error);
+              }
+              // Prefetch next song in background for faster playback
+              const { queue } = get();
+              const currentIndex = queue.findIndex((s) => s.id === song.id);
+              if (currentIndex >= 0 && currentIndex < queue.length - 1) {
+                prefetchNextSong(queue[currentIndex + 1]).catch(() => {});
               }
             })
             .catch((err) => {

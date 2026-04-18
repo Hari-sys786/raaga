@@ -130,6 +130,24 @@ export async function getStorageUsed(): Promise<number> {
   return total;
 }
 
+/**
+ * Prefetch the next song's stream URL so it loads faster when playback starts.
+ * If the song is already downloaded locally, this is a no-op.
+ */
+export async function prefetchNextSong(song: Song): Promise<void> {
+  // Already downloaded — will play from local, no prefetch needed
+  if (getLocalPath(song.id)) return;
+
+  try {
+    const streamUrl = api.streamUrl(song.id, song.source || 'jiosaavn');
+    // Fire a HEAD request to warm up the CDN/proxy connection
+    await fetch(streamUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+    console.log('[Prefetch] Warmed:', song.title);
+  } catch {
+    // Non-critical — just a performance optimization
+  }
+}
+
 export function isDownloaded(songId: string): boolean {
   return useDownloadStore.getState().isDownloaded(songId);
 }
