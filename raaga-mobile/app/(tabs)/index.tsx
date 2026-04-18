@@ -64,7 +64,7 @@ const LANGS = [
   { slug: 'tamil', script: 'த', name: 'Tamil' },
   { slug: 'punjabi', script: 'ਪੰ', name: 'Punjabi' },
   { slug: 'kannada', script: 'ಕ', name: 'Kannada' },
-  { slug: 'malayalam', script: 'മ', name: 'Malayalam' },
+  { slug: 'malayalam', script: 'മല', name: 'Malayalam' },
   { slug: 'bengali', script: 'বা', name: 'Bengali' },
   { slug: 'marathi', script: 'म', name: 'Marathi' },
   { slug: 'gujarati', script: 'ગુ', name: 'Gujarati' },
@@ -473,9 +473,9 @@ const s = StyleSheet.create({
 
   // Languages
   langCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',

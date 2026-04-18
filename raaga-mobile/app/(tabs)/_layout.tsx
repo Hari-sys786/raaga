@@ -157,8 +157,8 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingTop: 6,
-    minHeight: 60,
+    paddingTop: 8,
+    minHeight: 64,
   },
   tabItem: {
     flex: 1,
@@ -166,6 +166,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 3,
     paddingTop: 4,
+    paddingBottom: 4,
   },
   activeDot: {
     width: 4,

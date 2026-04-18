@@ -47,6 +47,8 @@ export default function RootLayout() {
         <Stack.Screen name="mood/[slug]" options={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }} />
         <Stack.Screen name="trending" options={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }} />
         <Stack.Screen name="settings/equalizer" options={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }} />
+        <Stack.Screen name="privacy" options={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }} />
+        <Stack.Screen name="terms" options={{ animation: 'slide_from_right', contentStyle: { backgroundColor: colors.background } }} />
       </Stack>
       {/* MiniPlayer for non-tab stack screens (genre, mood, artist, album, trending) */}
       {showMiniPlayer && (
