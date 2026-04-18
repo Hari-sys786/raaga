@@ -30,6 +30,7 @@ interface PlayerState {
   next: () => void;
   previous: () => void;
   addToQueue: (song: Song) => void;
+  playNext: (song: Song) => void;
   removeFromQueue: (songId: string) => void;
   setQueue: (songs: Song[]) => void;
   setProgress: (progress: number) => void;
@@ -237,10 +238,31 @@ export const usePlayerStore = create<PlayerState>()(
         },
 
         addToQueue: (song: Song) =>
-          set((state) => ({
-            queue: [...state.queue, song],
-            originalQueue: [...state.originalQueue, song],
-          })),
+          set((state) => {
+            // Insert after current song so manually queued songs play next
+            const currentIndex = state.queue.findIndex((s) => s.id === state.currentSong?.id);
+            const insertAt = currentIndex >= 0 ? currentIndex + 1 : state.queue.length;
+            const newQueue = [...state.queue];
+            newQueue.splice(insertAt, 0, song);
+            const newOriginal = [...state.originalQueue];
+            const origIndex = newOriginal.findIndex((s) => s.id === state.currentSong?.id);
+            const origInsertAt = origIndex >= 0 ? origIndex + 1 : newOriginal.length;
+            newOriginal.splice(origInsertAt, 0, song);
+            return { queue: newQueue, originalQueue: newOriginal };
+          }),
+
+        playNext: (song: Song) =>
+          set((state) => {
+            // Insert immediately after current song (before other queued songs)
+            const currentIndex = state.queue.findIndex((s) => s.id === state.currentSong?.id);
+            const insertAt = currentIndex >= 0 ? currentIndex + 1 : 0;
+            const newQueue = [...state.queue];
+            // Remove if already in queue
+            const existingIdx = newQueue.findIndex((s) => s.id === song.id);
+            if (existingIdx >= 0) newQueue.splice(existingIdx, 1);
+            newQueue.splice(insertAt, 0, song);
+            return { queue: newQueue, originalQueue: newQueue };
+          }),
 
         removeFromQueue: (songId: string) =>
           set((state) => ({

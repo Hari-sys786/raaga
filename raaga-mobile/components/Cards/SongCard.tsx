@@ -81,6 +81,7 @@ export const SongCard = React.memo(function SongCard({ song, onPress, onLongPres
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const addToQueue = usePlayerStore((s) => s.addToQueue);
+  const playNextInQueue = usePlayerStore((s) => s.playNext);
   const isFavorite = useLibraryStore((s) => s.isFavorite(song.id));
   const toggleFavorite = useLibraryStore((s) => s.toggleFavorite);
   const startDownload = useDownloadStore((s) => s.startDownload);
@@ -105,6 +106,11 @@ export const SongCard = React.memo(function SongCard({ song, onPress, onLongPres
   const handleAddToQueue = () => {
     setMenuVisible(false);
     addToQueue(song);
+  };
+
+  const handlePlayNext = () => {
+    setMenuVisible(false);
+    playNextInQueue(song);
   };
 
   const handleToggleFavorite = () => {
@@ -206,6 +212,11 @@ export const SongCard = React.memo(function SongCard({ song, onPress, onLongPres
             <View style={styles.menuDivider} />
 
             {/* Menu items */}
+            <TouchableOpacity style={styles.menuItem} onPress={handlePlayNext}>
+              <Ionicons name="play-forward" size={22} color={colors.textSecondary} />
+              <Text style={styles.menuItemText}>Play Next</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.menuItem} onPress={handleAddToQueue}>
               <Ionicons name="list" size={22} color={colors.textSecondary} />
               <Text style={styles.menuItemText}>Add to Queue</Text>

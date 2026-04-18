@@ -249,55 +249,12 @@ export default function HomeScreen() {
 
       {/* ── Hero Header ── */}
       <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.greeting}>{getGreeting()}</Text>
-            <View style={styles.logoBlock}>
-              <Text style={styles.logo}>राग</Text>
-              <Text style={styles.logoSub}>Raaga</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.headerSearchButton}
-            onPress={() => router.push('/search')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="search" size={22} color={colors.textSecondary} />
-          </TouchableOpacity>
+        <Text style={styles.greeting}>{getGreeting()}</Text>
+        <View style={styles.logoBlock}>
+          <Text style={styles.logo}>राग</Text>
+          <Text style={styles.logoSub}>Raaga</Text>
         </View>
       </Animated.View>
-
-      {/* ── Play My Mix ── */}
-      {(hasMixContent || trending.length > 0) && (
-        <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.section}>
-          <TouchableOpacity
-            style={styles.mixCard}
-            onPress={handlePlayMyMix}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={['rgba(6,182,212,0.18)', 'rgba(6,182,212,0.04)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.mixIconWrap}>
-              <Ionicons name="sparkles" size={22} color={colors.defaultAccent} />
-            </View>
-            <View style={styles.mixTextBlock}>
-              <Text style={styles.mixTitle}>Play My Mix</Text>
-              <Text style={styles.mixSub}>
-                {hasMixContent
-                  ? `${favorites.length} favorites · ${recentlyPlayed.length} recent`
-                  : 'Shuffled from trending hits'}
-              </Text>
-            </View>
-            <View style={styles.mixPlayBtn}>
-              <Ionicons name="play" size={20} color="#fff" />
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
 
       {/* ── Trending Now ── */}
       <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.section}>
