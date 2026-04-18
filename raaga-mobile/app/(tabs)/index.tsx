@@ -249,10 +249,21 @@ export default function HomeScreen() {
 
       {/* ── Hero Header ── */}
       <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
-        <Text style={styles.greeting}>{getGreeting()}</Text>
-        <View style={styles.logoBlock}>
-          <Text style={styles.logo}>राग</Text>
-          <Text style={styles.logoSub}>Raaga</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
+            <View style={styles.logoBlock}>
+              <Text style={styles.logo}>राग</Text>
+              <Text style={styles.logoSub}>Raaga</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.headerSearchButton}
+            onPress={() => router.push('/search')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="search" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
       </Animated.View>
 

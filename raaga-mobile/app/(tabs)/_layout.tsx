@@ -70,8 +70,8 @@ export default function TabLayout() {
                   const iconName = isFocused ? iconConfig?.active : iconConfig?.inactive;
                   const color = isFocused ? colors.defaultAccent : colors.textTertiary;
 
-                  // Insert Play Mix button after the 2nd tab (search)
-                  const showMixAfter = index === 1 && (favorites.length > 0 || recentlyPlayed.length > 0);
+                  // Insert Play Mix button after Home tab (first visible tab)
+                  const showMixAfter = index === 0;
 
                   return (
                     <React.Fragment key={route.key}>
@@ -115,7 +115,7 @@ export default function TabLayout() {
         )}
       >
         <Tabs.Screen name="index" options={{ title: 'Home' }} />
-        <Tabs.Screen name="search" options={{ title: 'Search' }} />
+        <Tabs.Screen name="search" options={{ title: 'Search', href: null }} />
         <Tabs.Screen name="library" options={{ title: 'Library' }} />
         <Tabs.Screen name="downloads" options={{ title: 'Downloads' }} />
         <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
