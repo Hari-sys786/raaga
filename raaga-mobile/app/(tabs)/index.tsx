@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,13 @@ import {
   ActivityIndicator,
   Dimensions,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown, FadeIn, FadeInRight } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../components/Common/Screen';
 import { GlassCard } from '../../components/Common/GlassCard';
 import { colors, typography, spacing } from '../../theme';
@@ -23,168 +23,113 @@ import { usePlayerStore } from '../../stores/playerStore';
 import { useLibraryStore } from '../../stores/libraryStore';
 import { Song } from '../../types';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_GAP = 10;
-const HERO_CARD_WIDTH = SCREEN_WIDTH * 0.72;
-const SMALL_CARD_WIDTH = (SCREEN_WIDTH - spacing.screenPadding * 2 - CARD_GAP) / 2;
-const GENRE_CARD_WIDTH = (SCREEN_WIDTH - spacing.screenPadding * 2 - CARD_GAP * 2) / 3;
+const { width: W } = Dimensions.get('window');
+const HERO_W = W * 0.78;
+const HERO_H = HERO_W * 0.58;
+const RECENT_W = (W - spacing.screenPadding * 2 - 10) / 2;
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
-const genres = [
-  { slug: 'bollywood', name: 'Bollywood', icon: 'film', color: '#FF6B6B', bg: 'rgba(255,107,107,0.08)' },
-  { slug: 'pop', name: 'Pop', icon: 'mic', color: '#4ECDC4', bg: 'rgba(78,205,196,0.08)' },
-  { slug: 'hiphop', name: 'Hip-Hop', icon: 'headset', color: '#FFE66D', bg: 'rgba(255,230,109,0.08)' },
-  { slug: 'classical', name: 'Classical', icon: 'musical-notes', color: '#A8E6CF', bg: 'rgba(168,230,207,0.08)' },
-  { slug: 'lofi', name: 'Lo-fi', icon: 'moon', color: '#DDA0DD', bg: 'rgba(221,160,221,0.08)' },
-  { slug: 'indie', name: 'Indie', icon: 'color-palette', color: '#98D8C8', bg: 'rgba(152,216,200,0.08)' },
-  { slug: 'edm', name: 'EDM', icon: 'volume-high', color: '#F7DC6F', bg: 'rgba(247,220,111,0.08)' },
-  { slug: 'rock', name: 'Rock', icon: 'flash', color: '#E74C3C', bg: 'rgba(231,76,60,0.08)' },
-  { slug: 'devotional', name: 'Devotional', icon: 'flower', color: '#F39C12', bg: 'rgba(243,156,18,0.08)' },
-  { slug: 'ghazal', name: 'Ghazal', icon: 'rose', color: '#8E44AD', bg: 'rgba(142,68,173,0.08)' },
-  { slug: 'sufi', name: 'Sufi', icon: 'sparkles', color: '#2ECC71', bg: 'rgba(46,204,113,0.08)' },
-  { slug: 'punjabi', name: 'Punjabi', icon: 'musical-note', color: '#E67E22', bg: 'rgba(230,126,34,0.08)' },
+const GENRES = [
+  { slug: 'bollywood', name: 'Bollywood', icon: 'film-outline', accent: '#FF6B6B' },
+  { slug: 'pop', name: 'Pop', icon: 'mic-outline', accent: '#4ECDC4' },
+  { slug: 'hiphop', name: 'Hip-Hop', icon: 'headset-outline', accent: '#FFE66D' },
+  { slug: 'classical', name: 'Classical', icon: 'musical-notes-outline', accent: '#A8E6CF' },
+  { slug: 'lofi', name: 'Lo-fi', icon: 'moon-outline', accent: '#C4B5FD' },
+  { slug: 'indie', name: 'Indie', icon: 'color-palette-outline', accent: '#98D8C8' },
+  { slug: 'edm', name: 'EDM', icon: 'volume-high-outline', accent: '#FBBF24' },
+  { slug: 'rock', name: 'Rock', icon: 'flash-outline', accent: '#F87171' },
+  { slug: 'devotional', name: 'Devotional', icon: 'flower-outline', accent: '#FB923C' },
+  { slug: 'ghazal', name: 'Ghazal', icon: 'rose-outline', accent: '#A78BFA' },
+  { slug: 'sufi', name: 'Sufi', icon: 'sparkles-outline', accent: '#34D399' },
+  { slug: 'punjabi', name: 'Punjabi', icon: 'musical-note-outline', accent: '#F97316' },
 ];
 
-const moods = [
-  { slug: 'chill', name: 'Chill', gradient: ['#667eea', '#764ba2'] as [string, string], icon: 'moon-outline' },
-  { slug: 'workout', name: 'Workout', gradient: ['#f093fb', '#f5576c'] as [string, string], icon: 'barbell-outline' },
-  { slug: 'romance', name: 'Romance', gradient: ['#a18cd1', '#fbc2eb'] as [string, string], icon: 'heart-outline' },
-  { slug: 'party', name: 'Party', gradient: ['#ffecd2', '#fcb69f'] as [string, string], icon: 'sparkles-outline' },
-  { slug: 'focus', name: 'Focus', gradient: ['#a1c4fd', '#c2e9fb'] as [string, string], icon: 'eye-outline' },
-  { slug: 'sad', name: 'Sad', gradient: ['#667eea', '#764ba2'] as [string, string], icon: 'rainy-outline' },
-  { slug: 'devotional', name: 'Devotional', gradient: ['#f6d365', '#fda085'] as [string, string], icon: 'flower-outline' },
-  { slug: 'roadtrip', name: 'Road Trip', gradient: ['#84fab0', '#8fd3f4'] as [string, string], icon: 'car-outline' },
-  { slug: 'happy', name: 'Happy', gradient: ['#fbc2eb', '#a6c1ee'] as [string, string], icon: 'happy-outline' },
+const MOODS = [
+  { slug: 'chill', name: 'Chill', icon: 'moon-outline', g: ['#667eea', '#764ba2'] as const },
+  { slug: 'workout', name: 'Workout', icon: 'barbell-outline', g: ['#f093fb', '#f5576c'] as const },
+  { slug: 'romance', name: 'Romance', icon: 'heart-outline', g: ['#E879F9', '#fbc2eb'] as const },
+  { slug: 'party', name: 'Party', icon: 'sparkles-outline', g: ['#FBBF24', '#F97316'] as const },
+  { slug: 'focus', name: 'Focus', icon: 'eye-outline', g: ['#60A5FA', '#818CF8'] as const },
+  { slug: 'sad', name: 'Sad', icon: 'rainy-outline', g: ['#94A3B8', '#475569'] as const },
+  { slug: 'devotional', name: 'Devotional', icon: 'flower-outline', g: ['#F59E0B', '#EF4444'] as const },
+  { slug: 'roadtrip', name: 'Road Trip', icon: 'car-outline', g: ['#34D399', '#06B6D4'] as const },
+  { slug: 'happy', name: 'Happy', icon: 'happy-outline', g: ['#F472B6', '#A78BFA'] as const },
 ];
 
-const languages = [
-  { slug: 'hindi', name: 'Hindi', script: 'हिंदी' },
-  { slug: 'english', name: 'English', script: 'EN' },
-  { slug: 'telugu', name: 'Telugu', script: 'తెలుగు' },
-  { slug: 'tamil', name: 'Tamil', script: 'தமிழ்' },
-  { slug: 'punjabi', name: 'Punjabi', script: 'ਪੰਜਾਬੀ' },
-  { slug: 'kannada', name: 'Kannada', script: 'ಕನ್ನಡ' },
-  { slug: 'malayalam', name: 'Malayalam', script: 'മലയാളം' },
-  { slug: 'bengali', name: 'Bengali', script: 'বাংলা' },
-  { slug: 'marathi', name: 'Marathi', script: 'मराठी' },
-  { slug: 'gujarati', name: 'Gujarati', script: 'ગુજરાતી' },
+const LANGS = [
+  { slug: 'hindi', script: 'हि', name: 'Hindi' },
+  { slug: 'english', script: 'En', name: 'English' },
+  { slug: 'telugu', script: 'తె', name: 'Telugu' },
+  { slug: 'tamil', script: 'த', name: 'Tamil' },
+  { slug: 'punjabi', script: 'ਪੰ', name: 'Punjabi' },
+  { slug: 'kannada', script: 'ಕ', name: 'Kannada' },
+  { slug: 'malayalam', script: 'മ', name: 'Malayalam' },
+  { slug: 'bengali', script: 'বা', name: 'Bengali' },
+  { slug: 'marathi', script: 'म', name: 'Marathi' },
+  { slug: 'gujarati', script: 'ગુ', name: 'Gujarati' },
 ];
 
 function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 5) return 'Late Night';
-  if (hour < 12) return 'Good Morning';
-  if (hour < 17) return 'Good Afternoon';
-  if (hour < 21) return 'Good Evening';
+  const h = new Date().getHours();
+  if (h < 5) return 'Still up?';
+  if (h < 12) return 'Good Morning';
+  if (h < 17) return 'Good Afternoon';
+  if (h < 21) return 'Good Evening';
   return 'Good Night';
 }
 
-// ─── Hero Trending Card ──────────────────────────────────────────────────────
+// ─── Components ──────────────────────────────────────────────────────────────
 
-function HeroCard({ song, onPress, index }: { song: Song; onPress: () => void; index: number }) {
+function SectionHead({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
   return (
-    <Animated.View entering={FadeInRight.delay(index * 80).duration(400)}>
-      <TouchableOpacity
-        style={styles.heroCard}
-        onPress={onPress}
-        activeOpacity={0.85}
-      >
-        <Image
-          source={{ uri: song.image }}
-          style={styles.heroImage}
-          contentFit="cover"
-          transition={300}
-        />
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.85)']}
-          style={styles.heroOverlay}
-        />
-        <View style={styles.heroContent}>
-          <View style={styles.heroNowPlayingBadge}>
-            <View style={styles.heroDot} />
-            <Text style={styles.heroBadgeText}>#{index + 1} Trending</Text>
-          </View>
-          <Text style={styles.heroTitle} numberOfLines={2}>{song.title}</Text>
-          <Text style={styles.heroArtist} numberOfLines={1}>{song.artist}</Text>
-        </View>
-        <View style={styles.heroPlayFab}>
-          <Ionicons name="play" size={18} color="#fff" />
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
+    <View style={s.secHead}>
+      <Text style={s.secTitle}>{title}</Text>
+      {action && onAction && (
+        <TouchableOpacity onPress={onAction} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={s.secAction}>{action}</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
-// ─── Recently Played Row ─────────────────────────────────────────────────────
-
-function RecentCard({ song, onPress }: { song: Song; onPress: () => void }) {
+/** Large cinematic trending card with rank overlay */
+function HeroCard({ song, rank, onPress }: { song: Song; rank: number; onPress: () => void }) {
   return (
-    <TouchableOpacity style={styles.recentCard} onPress={onPress} activeOpacity={0.8}>
-      <Image source={{ uri: song.image }} style={styles.recentArt} contentFit="cover" transition={200} />
-      <View style={styles.recentInfo}>
-        <Text style={styles.recentTitle} numberOfLines={1}>{song.title}</Text>
-        <Text style={styles.recentArtist} numberOfLines={1}>{song.artist}</Text>
+    <TouchableOpacity style={s.hero} onPress={onPress} activeOpacity={0.88}>
+      <Image source={{ uri: song.image }} style={s.heroImg} contentFit="cover" transition={400} />
+      {/* Cinematic gradient */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(8,11,18,0.92)']}
+        locations={[0, 0.5, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Rank watermark */}
+      <Text style={s.heroRank}>{rank}</Text>
+      {/* Info */}
+      <View style={s.heroInfo}>
+        <Text style={s.heroTitle} numberOfLines={2}>{song.title}</Text>
+        <Text style={s.heroArtist} numberOfLines={1}>{song.artist}</Text>
+      </View>
+      {/* Play */}
+      <View style={s.heroPlay}>
+        <Ionicons name="play" size={16} color="#fff" />
       </View>
     </TouchableOpacity>
   );
 }
 
-// ─── Compact Genre Pill ──────────────────────────────────────────────────────
-
-function GenrePill({ genre, onPress }: { genre: typeof genres[0]; onPress: () => void }) {
+/** Compact recently-played tile — album art flush left */
+function RecentTile({ song, onPress }: { song: Song; onPress: () => void }) {
   return (
-    <TouchableOpacity
-      style={[styles.genrePill, { backgroundColor: genre.bg, borderColor: genre.color + '20' }]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <Ionicons name={genre.icon as any} size={16} color={genre.color} />
-      <Text style={[styles.genrePillText, { color: genre.color }]}>{genre.name}</Text>
+    <TouchableOpacity style={s.recent} onPress={onPress} activeOpacity={0.8}>
+      <Image source={{ uri: song.image }} style={s.recentArt} contentFit="cover" transition={200} />
+      <View style={s.recentText}>
+        <Text style={s.recentTitle} numberOfLines={1}>{song.title}</Text>
+        <Text style={s.recentSub} numberOfLines={1}>{song.artist}</Text>
+      </View>
     </TouchableOpacity>
-  );
-}
-
-// ─── Mood Card (new design) ──────────────────────────────────────────────────
-
-function MoodTile({ mood, onPress }: { mood: typeof moods[0]; onPress: () => void }) {
-  return (
-    <TouchableOpacity style={styles.moodTile} onPress={onPress} activeOpacity={0.8}>
-      <LinearGradient
-        colors={[mood.gradient[0] + '30', mood.gradient[1] + '15']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <Ionicons name={mood.icon as any} size={20} color={mood.gradient[0]} />
-      <Text style={styles.moodTileText}>{mood.name}</Text>
-    </TouchableOpacity>
-  );
-}
-
-// ─── Language Chip (new) ─────────────────────────────────────────────────────
-
-function LangChip({ lang, onPress }: { lang: typeof languages[0]; onPress: () => void }) {
-  return (
-    <TouchableOpacity style={styles.langChip} onPress={onPress} activeOpacity={0.75}>
-      <Text style={styles.langScript}>{lang.script}</Text>
-      <Text style={styles.langName}>{lang.name}</Text>
-    </TouchableOpacity>
-  );
-}
-
-// ─── Section Header ──────────────────────────────────────────────────────────
-
-function SectionHead({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) {
-  return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {onSeeAll && (
-        <TouchableOpacity onPress={onSeeAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.seeAll}>See All →</Text>
-        </TouchableOpacity>
-      )}
-    </View>
   );
 }
 
@@ -196,433 +141,365 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const play = usePlayerStore((s) => s.play);
-  const setQueue = usePlayerStore((s) => s.setQueue);
-  const favorites = useLibraryStore((s) => s.favorites);
-  const recentlyPlayed = useLibraryStore((s) => s.recentlyPlayed);
+  const play = usePlayerStore((st) => st.play);
+  const setQueue = usePlayerStore((st) => st.setQueue);
+  const favorites = useLibraryStore((st) => st.favorites);
+  const recentlyPlayed = useLibraryStore((st) => st.recentlyPlayed);
 
   const fetchTrending = useCallback(async () => {
     try {
       setError(null);
-      const data = await api.viral();
-      const songs = Array.isArray(data) ? data : data?.data || data?.results || [];
-      setTrending(songs);
-    } catch (err: unknown) {
+      const d = await api.viral();
+      setTrending(Array.isArray(d) ? d : d?.data || d?.results || []);
+    } catch (e: any) {
       try {
-        const data = await api.trending('hindi');
-        const songs = Array.isArray(data) ? data : data?.results || data?.data || [];
-        setTrending(songs);
-      } catch {
-        setError(err instanceof Error ? err.message : 'Failed to load');
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+        const d = await api.trending('hindi');
+        setTrending(Array.isArray(d) ? d : d?.results || d?.data || []);
+      } catch { setError(e?.message || 'Failed'); }
+    } finally { setLoading(false); setRefreshing(false); }
   }, []);
 
   useEffect(() => { fetchTrending(); }, [fetchTrending]);
+  const onRefresh = useCallback(() => { setRefreshing(true); fetchTrending(); }, [fetchTrending]);
 
-  const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchTrending();
-  }, [fetchTrending]);
+  const playSong = useCallback((song: Song, list: Song[]) => { setQueue(list); play(song); }, [play, setQueue]);
 
-  const handleSongPress = useCallback((song: Song) => {
-    setQueue(trending);
-    play(song);
-  }, [play, setQueue, trending]);
-
-  const handleRecentPress = useCallback((song: Song) => {
-    setQueue(recentlyPlayed);
-    play(song);
-  }, [play, setQueue, recentlyPlayed]);
-
-  const heroSongs = trending.slice(0, 5);
-  const recentSongs = recentlyPlayed.slice(0, 6);
+  const heroSongs = trending.slice(0, 6);
+  const recents = recentlyPlayed.slice(0, 6);
 
   return (
-    <Screen scroll refreshing={refreshing} onRefresh={handleRefresh}>
+    <Screen scroll refreshing={refreshing} onRefresh={onRefresh}>
 
-      {/* ─── Header ─── */}
-      <Animated.View entering={FadeIn.duration(600)} style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.brandName}>Raaga</Text>
+      {/* ── Header ── */}
+      <Animated.View entering={FadeIn.duration(500)} style={s.header}>
+        <View>
+          <Text style={s.greeting}>{getGreeting()}</Text>
+          <Text style={s.brand}>Raaga</Text>
         </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerIconBtn}
-            onPress={() => router.push('/search')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="search" size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={s.searchBtn} onPress={() => router.push('/search')} activeOpacity={0.7}>
+          <Ionicons name="search" size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
       </Animated.View>
 
-      {/* ─── Recently Played (2-col grid) ─── */}
-      {recentSongs.length > 0 && (
-        <Animated.View entering={FadeInDown.delay(50).duration(400)} style={styles.section}>
+      {/* ── Jump Back In ── */}
+      {recents.length > 0 && (
+        <Animated.View entering={FadeInDown.delay(60).duration(400)} style={s.sec}>
           <SectionHead title="Jump Back In" />
-          <View style={styles.recentGrid}>
-            {recentSongs.map((song) => (
-              <RecentCard key={song.id} song={song} onPress={() => handleRecentPress(song)} />
+          <View style={s.recentGrid}>
+            {recents.map((song) => (
+              <RecentTile key={song.id} song={song} onPress={() => playSong(song, recentlyPlayed)} />
             ))}
           </View>
         </Animated.View>
       )}
 
-      {/* ─── Trending Hero Carousel ─── */}
-      <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.section}>
-        <SectionHead title="Trending" onSeeAll={() => router.push('/trending')} />
+      {/* ── Trending ── */}
+      <Animated.View entering={FadeInDown.delay(120).duration(500)} style={s.sec}>
+        <SectionHead title="Trending" action="See All" onAction={() => router.push('/trending')} />
         {loading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color={colors.defaultAccent} />
-          </View>
+          <View style={s.loadBox}><ActivityIndicator size="large" color={colors.defaultAccent} /></View>
         ) : error ? (
-          <GlassCard style={styles.errorCard}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity onPress={handleRefresh} style={styles.retryBtn}>
-              <Text style={styles.retryText}>Retry</Text>
-            </TouchableOpacity>
+          <GlassCard style={s.errCard}>
+            <Text style={s.errText}>{error}</Text>
+            <TouchableOpacity onPress={onRefresh} style={s.retryBtn}><Text style={s.retryText}>Retry</Text></TouchableOpacity>
           </GlassCard>
         ) : (
           <FlatList
             data={heroSongs}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(i) => i.id}
             renderItem={({ item, index }) => (
-              <HeroCard song={item} onPress={() => handleSongPress(item)} index={index} />
+              <HeroCard song={item} rank={index + 1} onPress={() => playSong(item, trending)} />
             )}
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.heroList}
-            snapToInterval={HERO_CARD_WIDTH + 14}
+            contentContainerStyle={{ paddingLeft: spacing.screenPadding, paddingRight: 16, gap: 14 }}
+            snapToInterval={HERO_W + 14}
             decelerationRate="fast"
           />
         )}
       </Animated.View>
 
-      {/* ─── Moods ─── */}
-      <Animated.View entering={FadeInDown.delay(200).duration(500)} style={styles.section}>
+      {/* ── Moods ── */}
+      <Animated.View entering={FadeInDown.delay(200).duration(500)} style={s.sec}>
         <SectionHead title="Moods" />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.moodRow}
-        >
-          {moods.map((mood) => (
-            <MoodTile key={mood.slug} mood={mood} onPress={() => router.push(`/mood/${mood.slug}`)} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingLeft: spacing.screenPadding, paddingRight: 16, gap: 10 }}>
+          {MOODS.map((m) => (
+            <TouchableOpacity key={m.slug} style={s.moodCard} onPress={() => router.push(`/mood/${m.slug}`)} activeOpacity={0.8}>
+              <LinearGradient colors={[m.g[0] + '28', m.g[1] + '10']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+              <View style={[s.moodIcon, { backgroundColor: m.g[0] + '20' }]}>
+                <Ionicons name={m.icon as any} size={18} color={m.g[0]} />
+              </View>
+              <Text style={s.moodName}>{m.name}</Text>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </Animated.View>
 
-      {/* ─── Genres (pill grid) ─── */}
-      <Animated.View entering={FadeInDown.delay(300).duration(500)} style={styles.section}>
-        <SectionHead title="Browse Genres" />
-        <View style={styles.genreGrid}>
-          {genres.map((genre) => (
-            <GenrePill key={genre.slug} genre={genre} onPress={() => router.push(`/genre/${genre.slug}`)} />
+      {/* ── Genres ── */}
+      <Animated.View entering={FadeInDown.delay(280).duration(500)} style={s.sec}>
+        <SectionHead title="Genres" />
+        <View style={s.genreWrap}>
+          {GENRES.map((g) => (
+            <TouchableOpacity
+              key={g.slug}
+              style={[s.genreChip, { borderColor: g.accent + '25', backgroundColor: g.accent + '08' }]}
+              onPress={() => router.push(`/genre/${g.slug}`)}
+              activeOpacity={0.75}
+            >
+              <Ionicons name={g.icon as any} size={14} color={g.accent} />
+              <Text style={[s.genreText, { color: g.accent }]}>{g.name}</Text>
+            </TouchableOpacity>
           ))}
         </View>
       </Animated.View>
 
-      {/* ─── Languages ─── */}
-      <Animated.View entering={FadeInDown.delay(350).duration(500)} style={styles.section}>
-        <SectionHead title="By Language" />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.langRow}
-        >
-          {languages.map((lang) => (
-            <LangChip key={lang.slug} lang={lang} onPress={() => router.push(`/genre/${lang.slug}`)} />
+      {/* ── Languages ── */}
+      <Animated.View entering={FadeInDown.delay(340).duration(500)} style={s.sec}>
+        <SectionHead title="Languages" />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingLeft: spacing.screenPadding, paddingRight: 16, gap: 10 }}>
+          {LANGS.map((l) => (
+            <TouchableOpacity key={l.slug} style={s.langCircle} onPress={() => router.push(`/genre/${l.slug}`)} activeOpacity={0.75}>
+              <Text style={s.langScript}>{l.script}</Text>
+              <Text style={s.langLabel}>{l.name}</Text>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </Animated.View>
 
-      <View style={{ height: 120 }} />
+      <View style={{ height: 130 }} />
     </Screen>
   );
 }
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: 12,
-    paddingBottom: 20,
-  },
-  headerLeft: {
-    gap: 2,
+    paddingTop: 14,
+    paddingBottom: 22,
   },
   greeting: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '400',
     color: colors.textTertiary,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+    marginBottom: 2,
   },
-  brandName: {
-    fontSize: 28,
-    fontWeight: '800',
+  brand: {
+    fontSize: 30,
+    fontWeight: '900',
     color: colors.textPrimary,
-    letterSpacing: -0.8,
+    letterSpacing: -1.2,
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  headerIconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  searchBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.05)',
   },
 
-  // Sections
-  section: {
-    marginBottom: 28,
-  },
-  sectionHeader: {
+  // Section
+  sec: { marginBottom: 30 },
+  secHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'baseline',
     paddingHorizontal: spacing.screenPadding,
     marginBottom: 14,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+  secTitle: {
+    fontSize: 20,
+    fontWeight: '800',
     color: colors.textPrimary,
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
   },
-  seeAll: {
+  secAction: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.defaultAccent,
+    letterSpacing: 0.1,
   },
 
-  // Hero carousel
-  heroList: {
-    paddingLeft: spacing.screenPadding,
-    paddingRight: spacing.lg,
-    gap: 14,
-  },
-  heroCard: {
-    width: HERO_CARD_WIDTH,
-    height: HERO_CARD_WIDTH * 0.62,
-    borderRadius: 20,
+  // Hero
+  hero: {
+    width: HERO_W,
+    height: HERO_H,
+    borderRadius: 18,
     overflow: 'hidden',
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.surface,
   },
-  heroImage: {
-    width: '100%',
-    height: '100%',
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-  },
-  heroContent: {
+  heroImg: { width: '100%', height: '100%' },
+  heroRank: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
+    top: 10,
+    left: 14,
+    fontSize: 56,
+    fontWeight: '900',
+    color: 'rgba(255,255,255,0.08)',
+    letterSpacing: -3,
+    lineHeight: 56,
   },
-  heroNowPlayingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 6,
-  },
-  heroDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.defaultAccent,
-  },
-  heroBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.defaultAccent,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+  heroInfo: {
+    position: 'absolute',
+    bottom: 14,
+    left: 14,
+    right: 54,
   },
   heroTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.3,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   heroArtist: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.6)',
     marginTop: 3,
   },
-  heroPlayFab: {
+  heroPlay: {
     position: 'absolute',
-    bottom: 14,
-    right: 14,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    bottom: 12,
+    right: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: colors.defaultAccent,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.defaultAccent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
+    ...Platform.select({
+      ios: { shadowColor: colors.defaultAccent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10 },
+      android: { elevation: 8 },
+    }),
   },
 
-  // Recently played grid
+  // Recent grid
   recentGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: spacing.screenPadding,
-    gap: CARD_GAP,
+    gap: 10,
   },
-  recentCard: {
-    width: SMALL_CARD_WIDTH,
+  recent: {
+    width: RECENT_W,
+    height: 54,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 10,
+    borderRadius: 8,
     overflow: 'hidden',
-    height: 56,
   },
   recentArt: {
-    width: 56,
-    height: 56,
+    width: 54,
+    height: 54,
     backgroundColor: colors.surfaceElevated,
   },
-  recentInfo: {
+  recentText: {
     flex: 1,
     paddingHorizontal: 10,
-    gap: 2,
+    gap: 1,
   },
   recentTitle: {
     fontSize: 12,
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  recentArtist: {
+  recentSub: {
     fontSize: 10,
+    fontWeight: '400',
     color: colors.textTertiary,
   },
 
-  // Genre pills
-  genreGrid: {
+  // Mood
+  moodCard: {
+    width: 92,
+    height: 88,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.03)',
+    overflow: 'hidden',
+  },
+  moodIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moodName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    letterSpacing: 0.1,
+  },
+
+  // Genres
+  genreWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: spacing.screenPadding,
     gap: 8,
   },
-  genrePill: {
+  genreChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
     borderWidth: 1,
   },
-  genrePillText: {
-    fontSize: 13,
-    fontWeight: '600',
+  genreText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.1,
   },
 
-  // Mood tiles
-  moodRow: {
-    paddingLeft: spacing.screenPadding,
-    paddingRight: spacing.lg,
-    gap: 10,
-  },
-  moodTile: {
-    width: 88,
-    height: 80,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+  // Languages
+  langCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
-    overflow: 'hidden',
-  },
-  moodTileText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-
-  // Language chips
-  langRow: {
-    paddingLeft: spacing.screenPadding,
-    paddingRight: spacing.lg,
-    gap: 8,
-  },
-  langChip: {
+    borderColor: 'rgba(255,255,255,0.05)',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    gap: 2,
+    gap: 1,
   },
   langScript: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
     color: colors.textPrimary,
   },
-  langName: {
-    fontSize: 9,
-    fontWeight: '500',
+  langLabel: {
+    fontSize: 8,
+    fontWeight: '600',
     color: colors.textTertiary,
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 
   // States
-  loadingBox: {
-    height: 160,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorCard: {
-    marginHorizontal: spacing.screenPadding,
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  errorText: {
-    ...typography.bodySmall,
-    color: colors.error,
-    textAlign: 'center',
-  },
-  retryBtn: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    borderRadius: spacing.buttonRadiusLarge,
-    backgroundColor: colors.defaultAccent,
-  },
-  retryText: {
-    ...typography.bodySmall,
-    color: colors.background,
-    fontWeight: '700',
-  },
+  loadBox: { height: 160, justifyContent: 'center', alignItems: 'center' },
+  errCard: { marginHorizontal: spacing.screenPadding, alignItems: 'center', gap: 12 },
+  errText: { fontSize: 13, color: colors.error, textAlign: 'center' },
+  retryBtn: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.defaultAccent },
+  retryText: { fontSize: 13, fontWeight: '700', color: colors.background },
 });
