@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, Pressable, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,10 +8,10 @@ import { MiniPlayer } from '../../components/Player/MiniPlayer';
 import { usePlayerStore } from '../../stores/playerStore';
 import { useLibraryStore } from '../../stores/libraryStore';
 import { colors, typography } from '../../theme';
+import { api } from '../../services/api';
 
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   index: { active: 'home', inactive: 'home-outline' },
-  search: { active: 'search', inactive: 'search-outline' },
   library: { active: 'library', inactive: 'library-outline' },
   downloads: { active: 'download', inactive: 'download-outline' },
   settings: { active: 'settings', inactive: 'settings-outline' },
@@ -19,20 +19,28 @@ const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const play = usePlayerStore((s) => s.play);
   const setQueue = usePlayerStore((s) => s.setQueue);
   const favorites = useLibraryStore((s) => s.favorites);
   const recentlyPlayed = useLibraryStore((s) => s.recentlyPlayed);
 
-  const handlePlayMix = () => {
+  const handlePlayMix = async () => {
     const seen = new Set<string>();
     const mix: any[] = [];
     [...favorites, ...recentlyPlayed].forEach((s) => {
       if (!seen.has(s.id)) { seen.add(s.id); mix.push(s); }
     });
+    // If no history, fetch trending and shuffle
+    if (mix.length === 0) {
+      try {
+        const data = await api.trending('hindi,english');
+        const songs = Array.isArray(data) ? data : data?.results || [];
+        songs.slice(0, 20).forEach((s: any) => {
+          if (!seen.has(s.id)) { seen.add(s.id); mix.push(s); }
+        });
+      } catch {}
+    }
     if (mix.length > 0) {
-      // Fisher-Yates shuffle
       for (let i = mix.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [mix[i], mix[j]] = [mix[j], mix[i]];
@@ -50,69 +58,81 @@ export default function TabLayout() {
           tabBarStyle: { display: 'none' },
           tabBarHideOnKeyboard: true,
         }}
-        tabBar={(props) => (
-          <View>
-            {/* MiniPlayer sits above tab bar on tab screens */}
+        tabBar={(props) => {
+          // Filter out hidden tabs (search)
+          const visibleRoutes = props.state.routes.filter(
+            (r) => TAB_ICONS[r.name] !== undefined
+          );
+          const visibleIndexMap = new Map(
+            visibleRoutes.map((r) => [r.key, props.state.routes.indexOf(r)])
+          );
+
+          return (
             <View>
               <MiniPlayer />
-            </View>
-            <View style={styles.tabBarOuter}>
-              <LinearGradient
-                colors={['rgba(15,21,32,0.95)', 'rgba(8,11,18,0.99)']}
-                style={StyleSheet.absoluteFill}
-              />
-              <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}> 
-                {props.state.routes.map((route, index) => {
-                  const { options } = props.descriptors[route.key];
-                  const label = options.title ?? route.name;
-                  const isFocused = props.state.index === index;
-                  const iconConfig = TAB_ICONS[route.name];
-                  const iconName = isFocused ? iconConfig?.active : iconConfig?.inactive;
-                  const color = isFocused ? colors.defaultAccent : colors.textTertiary;
+              <View style={styles.tabBarOuter}>
+                <LinearGradient
+                  colors={['rgba(8,11,18,0.97)', 'rgba(8,11,18,0.99)']}
+                  style={StyleSheet.absoluteFill}
+                />
+                <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+                  {visibleRoutes.map((route, idx) => {
+                    const realIndex = visibleIndexMap.get(route.key)!;
+                    const isFocused = props.state.index === realIndex;
+                    const iconConfig = TAB_ICONS[route.name];
+                    const iconName = isFocused ? iconConfig?.active : iconConfig?.inactive;
+                    const color = isFocused ? colors.defaultAccent : colors.textTertiary;
+                    const label = props.descriptors[route.key]?.options?.title ?? route.name;
 
-                  // Insert Play Mix button after Home tab (first visible tab)
-                  const showMixAfter = index === 0;
+                    // Insert Play Mix FAB after Library (index 1 in visible = 2nd item)
+                    const showMixAfter = idx === 1;
 
-                  return (
-                    <React.Fragment key={route.key}>
-                      <Pressable
-                        style={styles.tabItem}
-                        onPress={() => {
-                          const event = props.navigation.emit({
-                            type: 'tabPress',
-                            target: route.key,
-                            canPreventDefault: true,
-                          });
-                          if (!isFocused && !event.defaultPrevented) {
-                            props.navigation.navigate(route.name);
-                          }
-                        }}
-                      >
-                        {isFocused ? (
-                          <View style={styles.activeDot} />
-                        ) : (
-                          <View style={styles.dotPlaceholder} />
-                        )}
-                        <Ionicons name={iconName as any} size={24} color={color} />
-                        <Text style={[styles.tabLabel, { color }]}>
-                          {label}
-                        </Text>
-                      </Pressable>
-                      {showMixAfter && (
-                        <Pressable style={styles.mixTabItem} onPress={handlePlayMix}>
-                          <View style={styles.mixFab}>
-                            <Ionicons name="sparkles" size={22} color="#fff" />
-                          </View>
-                          <Text style={styles.mixTabLabel}>Mix</Text>
+                    return (
+                      <React.Fragment key={route.key}>
+                        <Pressable
+                          style={styles.tabItem}
+                          onPress={() => {
+                            const event = props.navigation.emit({
+                              type: 'tabPress',
+                              target: route.key,
+                              canPreventDefault: true,
+                            });
+                            if (!isFocused && !event.defaultPrevented) {
+                              props.navigation.navigate(route.name);
+                            }
+                          }}
+                        >
+                          {isFocused && <View style={styles.activeDot} />}
+                          <Ionicons name={iconName as any} size={22} color={color} />
+                          <Text style={[styles.tabLabel, { color }]}>{label}</Text>
                         </Pressable>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
+
+                        {showMixAfter && (
+                          <View style={styles.mixTabItem}>
+                            <TouchableOpacity
+                              style={styles.mixFab}
+                              onPress={handlePlayMix}
+                              activeOpacity={0.8}
+                            >
+                              <LinearGradient
+                                colors={[colors.defaultAccent, '#0891B2']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={StyleSheet.absoluteFill}
+                              />
+                              <Ionicons name="sparkles" size={24} color="#fff" />
+                            </TouchableOpacity>
+                            <Text style={styles.mixLabel}>Mix</Text>
+                          </View>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </View>
               </View>
             </View>
-          </View>
-        )}
+          );
+        }}
       >
         <Tabs.Screen name="index" options={{ title: 'Home' }} />
         <Tabs.Screen name="search" options={{ title: 'Search', href: null }} />
@@ -130,60 +150,60 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   tabBarOuter: {
-    borderTopColor: 'rgba(232,236,242,0.04)',
+    borderTopColor: 'rgba(255,255,255,0.04)',
     borderTopWidth: 0.5,
     overflow: 'hidden',
   },
   tabBar: {
     flexDirection: 'row',
-    paddingTop: 4,
-    minHeight: 56,
+    alignItems: 'flex-end',
+    paddingTop: 6,
+    minHeight: 60,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 3,
+    paddingTop: 4,
   },
   activeDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.defaultAccent,
-    marginBottom: 2,
-  },
-  dotPlaceholder: {
-    width: 4,
-    height: 4,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   tabLabel: {
-    ...typography.tabLabel,
     fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
+  // Mix FAB
   mixTabItem: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
+    justifyContent: 'flex-end',
+    width: 64,
+    paddingBottom: 0,
   },
   mixFab: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.defaultAccent,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -14,
+    marginTop: -20,
+    overflow: 'hidden',
     shadowColor: colors.defaultAccent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    elevation: 10,
   },
-  mixTabLabel: {
-    ...typography.tabLabel,
-    fontSize: 9,
+  mixLabel: {
+    fontSize: 10,
+    fontWeight: '600',
     color: colors.defaultAccent,
-    marginTop: 2,
+    marginTop: 3,
   },
 });
