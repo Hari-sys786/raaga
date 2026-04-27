@@ -21,6 +21,7 @@ import { colors, typography, spacing } from '../../theme';
 import { api } from '../../services/api';
 import { usePlayerStore } from '../../stores/playerStore';
 import { useLibraryStore } from '../../stores/libraryStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { Song } from '../../types';
 
 const { width: W } = Dimensions.get('window');
@@ -145,6 +146,8 @@ export default function HomeScreen() {
   const setQueue = usePlayerStore((st) => st.setQueue);
   const favorites = useLibraryStore((st) => st.favorites);
   const recentlyPlayed = useLibraryStore((st) => st.recentlyPlayed);
+  const preferredLanguages = useSettingsStore((st) => st.preferredLanguages);
+  const toggleLanguage = useSettingsStore((st) => st.toggleLanguage);
 
   const fetchTrending = useCallback(async () => {
     try {
@@ -256,15 +259,30 @@ export default function HomeScreen() {
 
       {/* ── Languages ── */}
       <Animated.View entering={FadeInDown.delay(340).duration(500)} style={s.sec}>
-        <SectionHead title="Languages" />
+        <SectionHead title="Languages" action="Reset" onAction={() => useSettingsStore.getState().resetLanguages()} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingLeft: spacing.screenPadding, paddingRight: 16, gap: 10 }}>
-          {LANGS.map((l) => (
-            <TouchableOpacity key={l.slug} style={s.langCircle} onPress={() => router.push(`/genre/${l.slug}`)} activeOpacity={0.75}>
-              <Text style={s.langScript}>{l.script}</Text>
-              <Text style={s.langLabel}>{l.name}</Text>
-            </TouchableOpacity>
-          ))}
+          {LANGS.map((l) => {
+            const isSelected = preferredLanguages.some((pl) => pl.slug === l.slug);
+            return (
+              <TouchableOpacity
+                key={l.slug}
+                style={[
+                  s.langCircle,
+                  isSelected && { borderColor: colors.defaultAccent, borderWidth: 2, backgroundColor: colors.defaultAccent + '15' },
+                ]}
+                onPress={() => {
+                  toggleLanguage(l);
+                  router.push(`/genre/${l.slug}`);
+                }}
+                onLongPress={() => toggleLanguage(l)}
+                activeOpacity={0.75}
+              >
+                <Text style={[s.langScript, isSelected && { color: colors.defaultAccent }]}>{l.script}</Text>
+                <Text style={[s.langLabel, isSelected && { color: colors.defaultAccent }]}>{l.name}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </Animated.View>
 

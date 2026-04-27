@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Modal, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -215,6 +215,19 @@ function SectionLabel({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; l
 
 // ─── Settings Screen ──────────────────────────────────────────────────────────
 
+const ALL_LANGS = [
+  { slug: 'hindi', script: 'हि', name: 'Hindi' },
+  { slug: 'english', script: 'En', name: 'English' },
+  { slug: 'telugu', script: 'తె', name: 'Telugu' },
+  { slug: 'tamil', script: 'த', name: 'Tamil' },
+  { slug: 'punjabi', script: 'ਪੰ', name: 'Punjabi' },
+  { slug: 'kannada', script: 'ಕ', name: 'Kannada' },
+  { slug: 'malayalam', script: 'മല', name: 'Malayalam' },
+  { slug: 'bengali', script: 'বা', name: 'Bengali' },
+  { slug: 'marathi', script: 'म', name: 'Marathi' },
+  { slug: 'gujarati', script: 'ગુ', name: 'Gujarati' },
+];
+
 export default function SettingsScreen() {
   const router = useRouter();
   const {
@@ -223,11 +236,14 @@ export default function SettingsScreen() {
     crossfade,
     sleepTimer,
     playbackSpeed,
+    preferredLanguages,
     setStreamingQuality,
     setDownloadQuality,
     toggleCrossfade,
     setSleepTimer,
     setPlaybackSpeed,
+    toggleLanguage,
+    resetLanguages,
   } = useSettingsStore();
 
   const [storageUsed, setStorageUsed] = useState(0);
@@ -394,6 +410,61 @@ export default function SettingsScreen() {
                 setSleepTimer(v as number),
               )
             }
+          />
+        </GlassCard>
+      </View>
+
+      {/* ── Language Preferences ──────────────── */}
+      <View style={styles.sectionBlock}>
+        <SectionLabel icon="language-outline" label="Language Preferences" />
+        <GlassCard style={styles.card}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 }}>
+            <Text style={{ fontSize: 12, color: '#888', marginBottom: 12, lineHeight: 17 }}>
+              Tap to select your preferred languages. These appear highlighted on the Home screen.
+              Long-press to toggle without navigating.
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10, paddingBottom: 10 }}>
+              {ALL_LANGS.map((l) => {
+                const isSelected = preferredLanguages.some((pl) => pl.slug === l.slug);
+                return (
+                  <TouchableOpacity
+                    key={l.slug}
+                    onPress={() => toggleLanguage(l)}
+                    activeOpacity={0.75}
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 32,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 2,
+                      backgroundColor: isSelected ? '#8B5CF615' : '#1A1A1A',
+                      borderWidth: isSelected ? 2 : 1,
+                      borderColor: isSelected ? '#8B5CF6' : 'rgba(255,255,255,0.07)',
+                    }}
+                  >
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: isSelected ? '#8B5CF6' : '#fff' }}>
+                      {l.script}
+                    </Text>
+                    <Text style={{ fontSize: 8, fontWeight: '600', color: isSelected ? '#8B5CF6' : '#666', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                      {l.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+          <View style={styles.cardDivider} />
+          <SettingRow
+            label={preferredLanguages.length > 0 ? `Reset (${preferredLanguages.length} selected)` : 'No languages selected'}
+            icon="refresh-outline"
+            onPress={() => {
+              Alert.alert('Reset Language Preferences', 'Clear all selected languages?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Reset', style: 'destructive', onPress: () => resetLanguages() },
+              ]);
+            }}
           />
         </GlassCard>
       </View>

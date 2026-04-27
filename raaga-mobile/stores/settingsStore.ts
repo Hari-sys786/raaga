@@ -12,6 +12,12 @@ interface EqualizerBands {
   khz14: number;
 }
 
+export interface LanguagePreference {
+  slug: string;
+  name: string;
+  script: string;
+}
+
 interface SettingsState {
   streamingQuality: AudioQuality;
   downloadQuality: AudioQuality;
@@ -21,6 +27,7 @@ interface SettingsState {
   playbackSpeed: number;
   equalizerPreset: string;
   equalizerBands: EqualizerBands;
+  preferredLanguages: LanguagePreference[];
 
   setStreamingQuality: (q: AudioQuality) => void;
   setDownloadQuality: (q: AudioQuality) => void;
@@ -31,6 +38,9 @@ interface SettingsState {
   setEqualizerPreset: (preset: string) => void;
   setEqualizerBands: (bands: EqualizerBands) => void;
   getSleepTimerRemaining: () => number | null;
+  setPreferredLanguages: (langs: LanguagePreference[]) => void;
+  toggleLanguage: (lang: LanguagePreference) => void;
+  resetLanguages: () => void;
 }
 
 const DEFAULT_BANDS: EqualizerBands = {
@@ -61,6 +71,7 @@ export const useSettingsStore = create<SettingsState>()(
       playbackSpeed: 1.0,
       equalizerPreset: 'Flat',
       equalizerBands: { ...DEFAULT_BANDS },
+      preferredLanguages: [],
 
       setStreamingQuality: (q: AudioQuality) => set({ streamingQuality: q }),
       setDownloadQuality: (q: AudioQuality) => set({ downloadQuality: q }),
@@ -96,6 +107,20 @@ export const useSettingsStore = create<SettingsState>()(
         const remaining = sleepTimerEndTime - Date.now();
         return remaining > 0 ? remaining : 0;
       },
+
+      setPreferredLanguages: (langs: LanguagePreference[]) => set({ preferredLanguages: langs }),
+
+      toggleLanguage: (lang: LanguagePreference) =>
+        set((state) => {
+          const exists = state.preferredLanguages.some((l) => l.slug === lang.slug);
+          if (exists) {
+            return { preferredLanguages: state.preferredLanguages.filter((l) => l.slug !== lang.slug) };
+          } else {
+            return { preferredLanguages: [...state.preferredLanguages, lang] };
+          }
+        }),
+
+      resetLanguages: () => set({ preferredLanguages: [] }),
     }),
     {
       name: 'raaga-settings',
@@ -107,6 +132,7 @@ export const useSettingsStore = create<SettingsState>()(
         playbackSpeed: state.playbackSpeed,
         equalizerPreset: state.equalizerPreset,
         equalizerBands: state.equalizerBands,
+        preferredLanguages: state.preferredLanguages,
       }),
     }
   )

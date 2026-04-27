@@ -17,19 +17,34 @@ async function loadNotifModule() {
   _loaded = true;
 
   if (isExpoGo) {
-    // Never even attempt to load in Expo Go
     _notifModule = null;
     return null;
   }
 
   try {
-    // Dynamic import — only in dev build / production
     _notifModule = await import('expo-notifications');
     return _notifModule;
   } catch {
     _notifModule = null;
     return null;
   }
+}
+
+const CHANNEL_ID = 'now-playing';
+const NOTIF_ID = 'now-playing';
+
+async function ensureChannel(notif: any) {
+  if (Platform.OS !== 'android') return;
+  await notif.setNotificationChannelAsync(CHANNEL_ID, {
+    name: 'Now Playing',
+    // DEFAULT importance = non-dismissible on most Android versions
+    // LOW causes the notification to be easily swiped away
+    importance: notif.AndroidImportance?.DEFAULT ?? 3,
+    sound: undefined,
+    vibrationPattern: [0],
+    lockscreenVisibility: notif.AndroidNotificationVisibility?.PUBLIC ?? 1,
+    enableVibrate: false,
+  });
 }
 
 export async function showNowPlaying(title: string, artist: string, _artwork?: string) {
@@ -43,30 +58,34 @@ export async function showNowPlaying(title: string, artist: string, _artwork?: s
       if (newStatus !== 'granted') return;
     }
 
-    if (Platform.OS === 'android') {
-      await notif.setNotificationChannelAsync('now-playing', {
-        name: 'Now Playing',
-        importance: notif.AndroidImportance?.LOW ?? 2,
-        sound: undefined,
-        vibrationPattern: [0],
-        lockscreenVisibility: notif.AndroidNotificationVisibility?.PUBLIC ?? 1,
-      });
-    }
+    await ensureChannel(notif);
 
     await notif.scheduleNotificationAsync({
+      identifier: NOTIF_ID,
       content: {
         title: `🎵 ${title}`,
         body: artist,
         sound: false,
         sticky: true,
-        priority: notif.AndroidNotificationPriority?.LOW ?? 'low',
+        // ongoing flag via data — expo-notifications passes this through on Android
+        data: { ongoing: true },
+        ...(Platform.OS === 'android' && {
+          priority: notif.AndroidNotificationPriority?.DEFAULT ?? 'default',
+          // categoryIdentifier maps to Android notification category
+          // TRANSPORT = media-style controls, stays in drawer
+          categoryIdentifier: 'transport',
+        }),
       },
       trigger: null,
-      identifier: 'now-playing',
     });
   } catch {
-    // Silent fail
+    // Silent fail — notification is optional UX
   }
+}
+
+export async function updateNowPlaying(title: string, artist: string) {
+  // Same as show — scheduling with same identifier replaces the existing one
+  return showNowPlaying(title, artist);
 }
 
 export async function clearNowPlaying() {
@@ -74,7 +93,7 @@ export async function clearNowPlaying() {
   if (!notif) return;
 
   try {
-    await notif.dismissNotificationAsync('now-playing');
+    await notif.dismissNotificationAsync(NOTIF_ID);
   } catch {
     // Silent fail
   }
