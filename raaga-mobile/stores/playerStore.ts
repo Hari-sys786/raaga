@@ -7,7 +7,7 @@ import { api } from '../services/api';
 import { getLocalPath, prefetchNextSong } from '../services/downloads';
 import { useLibraryStore } from './libraryStore';
 import { useSettingsStore } from './settingsStore';
-import { showNowPlaying, clearNowPlaying } from '../services/notifications';
+import { showNowPlaying, updateNowPlaying, clearNowPlaying, setNotificationCallbacks } from '../services/notifications';
 
 type RepeatMode = 'off' | 'one' | 'all';
 
@@ -65,6 +65,17 @@ export const usePlayerStore = create<PlayerState>()(
         }
       });
 
+      // Wire notification action buttons → store actions
+      setNotificationCallbacks({
+        onNext: () => get().next(),
+        onPrevious: () => get().previous(),
+        onPlayPause: () => {
+          const { isPlaying } = get();
+          if (isPlaying) get().pause();
+          else get().resume();
+        },
+      });
+
       playerService.setOnPlaybackFinished(() => {
         const { repeat, currentSong } = get();
         if (repeat === 'one' && currentSong) {
@@ -119,8 +130,8 @@ export const usePlayerStore = create<PlayerState>()(
 
           console.log('[PlayerStore] Playing:', song.title, localPath ? '(offline)' : '(stream)');
 
-          // Show notification bar
-          showNowPlaying(song.title, song.artist, song.image).catch(() => {});
+          // Show notification with media controls
+          showNowPlaying(song.title, song.artist, true, song.image).catch(() => {});
 
           playerService.loadAndPlay(uri, {
             title: song.title,
@@ -152,6 +163,10 @@ export const usePlayerStore = create<PlayerState>()(
         pause: () => {
           set({ isPlaying: false });
           playerService.pause();
+          const { currentSong } = get();
+          if (currentSong) {
+            updateNowPlaying(currentSong.title, currentSong.artist, false, currentSong.image).catch(() => {});
+          }
         },
 
         resume: () => {
@@ -159,6 +174,7 @@ export const usePlayerStore = create<PlayerState>()(
           // If player has no active audio (e.g. after app restart), reload the song
           if (currentSong) {
             set({ isPlaying: true });
+            updateNowPlaying(currentSong.title, currentSong.artist, true, currentSong.image).catch(() => {});
             const localPath = getLocalPath ? getLocalPath(currentSong.id) : null;
             const uri = localPath ?? api.streamUrl(currentSong.id, currentSong.source || 'jiosaavn');
             playerService.loadAndPlay(uri, {
