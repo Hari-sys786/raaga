@@ -20,7 +20,6 @@
                 "backgroundColor": "#050505"
             },
             "edgeToEdgeEnabled": true,
-            "navigationBarColor": "#050505",
             "backgroundColor": "#050505",
             "permissions": [
                 "android.permission.INTERNET",
@@ -59,7 +58,9 @@
                     "androidMode": "default",
                     "androidCollapsedTitle": "Raaga"
                 }
-            ]
+            ],
+            "expo-font",
+            "expo-asset"
         ],
         "extra": {
             "router": {},
