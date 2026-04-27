@@ -1,17 +1,17 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Screen } from '../../components/Common/Screen';
 import { SongCard } from '../../components/Cards/SongCard';
 import { GlassCard } from '../../components/Common/GlassCard';
 import { colors, typography, spacing } from '../../theme';
@@ -49,9 +49,12 @@ export default function GenrePage() {
   // Personalization: get favorites, recents, downloads
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { favorites, recentlyPlayed } = require('../../stores/libraryStore').useLibraryStore();
-  const { downloads }: { downloads: Record<string, any> } = require('../../stores/downloadStore').useDownloadStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [searchPage, setSearchPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const seenIdsRef = useRef(new Set<string>());
   const [error, setError] = useState<string | null>(null);
   const play = usePlayerStore((s) => s.play);
   const setQueue = usePlayerStore((s) => s.setQueue);
@@ -62,6 +65,9 @@ export default function GenrePage() {
   const accentColor = GENRE_COLORS[genreName] || colors.defaultAccent;
 
   const fetchSongs = useCallback(async () => {
+    seenIdsRef.current = new Set<string>();
+    setSearchPage(1);
+    setHasMore(true);
     try {
       setError(null);
       const data = isLanguage
@@ -77,7 +83,6 @@ export default function GenrePage() {
         if (s.language) userLangs.add(s.language.toLowerCase());
       });
 
-      const seen = new Set<string>();
       const final: Song[] = [];
 
       if (userLangs.size > 0) {
@@ -88,20 +93,22 @@ export default function GenrePage() {
           (s: Song) => !s.language || !userLangs.has(s.language.toLowerCase())
         );
         for (const s of [...matching, ...rest]) {
-          if (!seen.has(s.id)) {
-            seen.add(s.id);
+          if (!seenIdsRef.current.has(s.id)) {
+            seenIdsRef.current.add(s.id);
             final.push(s);
           }
         }
       } else {
         for (const s of results) {
-          if (!seen.has(s.id)) {
-            seen.add(s.id);
+          if (!seenIdsRef.current.has(s.id)) {
+            seenIdsRef.current.add(s.id);
             final.push(s);
           }
         }
       }
       setSongs(final);
+      // genres/languages return fixed playlist sets — allow search-based expansion
+      setHasMore(final.length >= 10);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load songs');
     } finally {
@@ -109,6 +116,31 @@ export default function GenrePage() {
       setRefreshing(false);
     }
   }, [genreName, isLanguage]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    const nextPage = searchPage + 1;
+    try {
+      setLoadingMore(true);
+      // For both genre and language — load more via search query pagination
+      const data = await api.searchMore(genreName, nextPage);
+      const newSongs = (data.results ?? []).filter((s: Song) => {
+        if (seenIdsRef.current.has(s.id)) return false;
+        seenIdsRef.current.add(s.id);
+        return true;
+      });
+      if (newSongs.length > 0) {
+        setSongs((prev) => [...prev, ...newSongs]);
+        setQueue([...songs, ...newSongs]);
+      }
+      setSearchPage(nextPage);
+      setHasMore((data.hasMore ?? false) && newSongs.length > 0);
+    } catch {
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, genreName, searchPage, songs, setQueue]);
 
   useEffect(() => {
     fetchSongs();
@@ -127,61 +159,97 @@ export default function GenrePage() {
     [songs, play, setQueue]
   );
 
-  return (
-    <Screen scroll refreshing={refreshing} onRefresh={handleRefresh}>
-      {/* Header — inline: back + title on same row */}
-      <LinearGradient
-        colors={[accentColor + '25', 'transparent']}
-        style={[styles.headerGradient, { paddingTop: insets.top + 8 }]}
-      >
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <View style={styles.headerTitles}>
-            <Text style={styles.title} numberOfLines={1}>{displayName}</Text>
-            {isLanguage && (
-              <Text style={[styles.subtitle, { color: accentColor }]}>Trending</Text>
-            )}
-          </View>
+  const ListHeader = useCallback(() => (
+    <LinearGradient
+      colors={[accentColor + '25', 'transparent']}
+      style={[styles.headerGradient, { paddingTop: insets.top + 8 }]}
+    >
+      <View style={styles.headerRow}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <View style={styles.headerTitles}>
+          <Text style={styles.title} numberOfLines={1}>{displayName}</Text>
+          {isLanguage && (
+            <Text style={[styles.subtitle, { color: accentColor }]}>Trending</Text>
+          )}
         </View>
-      </LinearGradient>
+      </View>
+    </LinearGradient>
+  ), [accentColor, displayName, insets.top, isLanguage, router]);
 
-      {/* Content */}
-      {loading ? (
+  if (loading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ListHeader />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={accentColor} />
         </View>
-      ) : error ? (
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ListHeader />
         <GlassCard style={styles.errorCard}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity onPress={handleRefresh} style={[styles.retryButton, { backgroundColor: accentColor }]}>
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </GlassCard>
-      ) : songs.length === 0 ? (
-        <GlassCard style={styles.emptyCard}>
-          <Ionicons name="musical-notes" size={40} color={colors.textTertiary} />
-          <Text style={styles.emptyText}>No songs found for {displayName}</Text>
-        </GlassCard>
-      ) : (
-        songs.map((song, index) => (
-          <Animated.View key={song.id} entering={FadeInDown.delay(index * 40).springify()}>
-            <SongCard song={song} onPress={() => handleSongPress(song)} />
-          </Animated.View>
-        ))
-      )}
+      </View>
+    );
+  }
 
-      <View style={{ height: 100 }} />
-    </Screen>
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={songs}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={ListHeader}
+        renderItem={({ item, index }) => (
+          <Animated.View entering={index < 20 ? FadeInDown.delay(index * 30).springify() : undefined}>
+            <SongCard song={item} onPress={() => handleSongPress(item)} />
+          </Animated.View>
+        )}
+        ListEmptyComponent={
+          <GlassCard style={styles.emptyCard}>
+            <Ionicons name="musical-notes" size={40} color={colors.textTertiary} />
+            <Text style={styles.emptyText}>No songs found for {displayName}</Text>
+          </GlassCard>
+        }
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.4}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        showsVerticalScrollIndicator={false}
+        removeClippedSubviews
+        maxToRenderPerBatch={15}
+        windowSize={10}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color={accentColor} />
+            </View>
+          ) : null
+        }
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   headerGradient: {
     paddingHorizontal: spacing.screenPadding,
     paddingBottom: spacing.lg,

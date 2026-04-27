@@ -167,8 +167,8 @@ export default function HomeScreen() {
 
   const playSong = useCallback((song: Song, list: Song[]) => { setQueue(list); play(song); }, [play, setQueue]);
 
-  const heroSongs = trending.slice(0, 6);
-  const recents = recentlyPlayed.slice(0, 6);
+  const heroSongs = trending;
+  const recents = recentlyPlayed;
 
   return (
     <Screen scroll refreshing={refreshing} onRefresh={onRefresh}>

@@ -65,6 +65,10 @@ export default function SearchScreen() {
   const [results, setResults] = useState<SearchResults>({ songs: [], artists: [], albums: [] });
   const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
+  const [searchPage, setSearchPage] = useState(1);
+  const [hasMoreResults, setHasMoreResults] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const currentQueryRef = useRef<string>('');
 
   const inputRef = useRef<TextInput>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -106,7 +110,8 @@ export default function SearchScreen() {
     try {
       setTrendingLoading(true);
       const data = await api.trending?.() ?? [];
-      setTrendingSongs(data.slice(0, 10));
+      const list = Array.isArray(data) ? data : data?.results || data?.data || [];
+      setTrendingSongs(list);
     } catch (e) {
       setTrendingSongs([]);
     } finally {
@@ -118,23 +123,49 @@ export default function SearchScreen() {
     if (!text.trim()) {
       setResults({ songs: [], artists: [], albums: [] });
       setIsLoading(false);
+      setHasMoreResults(false);
+      setSearchPage(1);
       return;
     }
+    currentQueryRef.current = text;
     try {
       setIsLoading(true);
-      // Use searchAll which returns songs (as results), albums, artists
+      setSearchPage(1);
       const data = await api.searchAll(text);
+      if (currentQueryRef.current !== text) return; // stale
       setResults({
         songs: data.results ?? [],
         artists: data.artists ?? [],
         albums: data.albums ?? [],
       });
+      setHasMoreResults(data.hasMore ?? false);
     } catch (e) {
       setResults({ songs: [], artists: [], albums: [] });
+      setHasMoreResults(false);
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  const loadMoreResults = useCallback(async () => {
+    if (loadingMore || !hasMoreResults || !query.trim()) return;
+    const nextPage = searchPage + 1;
+    try {
+      setLoadingMore(true);
+      const data = await api.searchMore(query, nextPage);
+      if (currentQueryRef.current !== query) return; // stale
+      setResults((prev) => ({
+        ...prev,
+        songs: [...prev.songs, ...(data.results ?? [])],
+      }));
+      setSearchPage(nextPage);
+      setHasMoreResults(data.hasMore ?? false);
+    } catch {
+      // silent
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMoreResults, query, searchPage]);
 
   const handleQueryChange = (text: string) => {
     setQuery(text);
@@ -385,8 +416,17 @@ export default function SearchScreen() {
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={styles.listContent}
                 removeClippedSubviews
-                maxToRenderPerBatch={10}
-                windowSize={7}
+                maxToRenderPerBatch={15}
+                windowSize={10}
+                onEndReached={loadMoreResults}
+                onEndReachedThreshold={0.4}
+                ListFooterComponent={
+                  loadingMore ? (
+                    <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color={colors.defaultAccent} />
+                    </View>
+                  ) : null
+                }
                 ListEmptyComponent={
                   (results.albums.length > 0 || results.artists.length > 0) ? null : undefined
                 }

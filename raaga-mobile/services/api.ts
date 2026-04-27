@@ -161,4 +161,34 @@ export const api = {
     setCached(cacheKey, songs, TTL_GENRE);
     return songs;
   },
+
+  /** Load more songs for a search query — for infinite scroll */
+  searchMore: async (q: string, page: number) => {
+    const cacheKey = `search:${q}:${page}`;
+    const cached = getCached<any>(cacheKey);
+    if (cached) return cached;
+
+    const songs = await jiosaavn.searchSongs(q, page, 30);
+    const result = { results: songs, hasMore: songs.length >= 15 };
+    setCached(cacheKey, result, TTL_SEARCH);
+    return result;
+  },
+
+  /** Trending for additional languages — used for "load more" on trending screen */
+  trendingMore: async (langs: string[]) => {
+    const results: import('../types').Song[] = [];
+    const seen = new Set<string>();
+    for (const lang of langs) {
+      try {
+        const songs = await jiosaavn.getTrending(lang);
+        for (const s of songs) {
+          if (!seen.has(s.id)) {
+            seen.add(s.id);
+            results.push({ ...s, source: s.source === 'youtube' ? 'ytmusic' : s.source } as import('../types').Song);
+          }
+        }
+      } catch { /* skip failed languages */ }
+    }
+    return results;
+  },
 };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,25 +16,42 @@ import { usePlayerStore } from '../stores/playerStore';
 import { colors, typography, spacing } from '../theme';
 import { Song } from '../types';
 
+const MORE_LANGS = ['english', 'telugu', 'tamil', 'punjabi', 'kannada', 'malayalam'];
+
 export default function TrendingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [langIndex, setLangIndex] = useState(0);
+  const seenIdsRef = useRef(new Set<string>());
   const play = usePlayerStore((s) => s.play);
   const setQueue = usePlayerStore((s) => s.setQueue);
 
   const fetchTrending = useCallback(async () => {
+    seenIdsRef.current = new Set<string>();
+    setLangIndex(0);
     try {
       const data = await api.viral();
       const list = Array.isArray(data) ? data : data?.data || data?.results || [];
-      setSongs(list);
+      const unique = list.filter((s: Song) => {
+        if (seenIdsRef.current.has(s.id)) return false;
+        seenIdsRef.current.add(s.id);
+        return true;
+      });
+      setSongs(unique);
     } catch {
       try {
         const data = await api.trending('hindi');
         const list = Array.isArray(data) ? data : data?.results || data?.data || [];
-        setSongs(list);
+        const unique = list.filter((s: Song) => {
+          if (seenIdsRef.current.has(s.id)) return false;
+          seenIdsRef.current.add(s.id);
+          return true;
+        });
+        setSongs(unique);
       } catch {
         // silent
       }
@@ -43,6 +60,33 @@ export default function TrendingScreen() {
       setRefreshing(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || langIndex >= MORE_LANGS.length) return;
+    try {
+      setLoadingMore(true);
+      const lang = MORE_LANGS[langIndex];
+      const data = await api.trending(lang);
+      const list = Array.isArray(data) ? data : data?.results || data?.data || [];
+      const newSongs = list.filter((s: Song) => {
+        if (seenIdsRef.current.has(s.id)) return false;
+        seenIdsRef.current.add(s.id);
+        return true;
+      });
+      if (newSongs.length > 0) {
+        setSongs((prev) => {
+          const updated = [...prev, ...newSongs];
+          setQueue(updated);
+          return updated;
+        });
+      }
+      setLangIndex((i) => i + 1);
+    } catch {
+      // silent
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, langIndex, setQueue]);
 
   useEffect(() => {
     fetchTrending();
@@ -87,8 +131,20 @@ export default function TrendingScreen() {
             setRefreshing(true);
             fetchTrending();
           }}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews
+          maxToRenderPerBatch={15}
+          windowSize={10}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.loading}>
+                <ActivityIndicator size="small" color={colors.defaultAccent} />
+              </View>
+            ) : null
+          }
         />
       )}
     </View>
